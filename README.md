@@ -1,8 +1,11 @@
 # Zapret2 Control Center (Rust)
 
-Перенос GUI с Python/Tkinter на Rust + egui. Целевая платформа: Windows 10/11 x64.
+Исходный проект Rust + egui находится в `zapret2-rust-source.zip` (Cargo.toml, src/main.rs, .gitignore и workflow snapshot). Рабочий GitHub Actions workflow расположен в `.github/workflows/build-windows.yml`.
 
-## Возможности текущей реализации
+## Build / portable EXE
+GitHub Actions компилирует Windows x64 release и публикует артефакт `Zapret2ControlCenter.exe`. Откройте вкладку Actions → **Build Windows x64 portable EXE** → последний успешный запуск → Artifacts.
+
+## Возможности исходной версии
 - Fluent-inspired тёмный интерфейс: обзор, стратегии, списки и настройки.
 - Поиск `winws2.exe`, `zapret-lib.lua` и `blockcheck2.cmd` в выбранной папке.
 - Восемь встроенных профилей; пользовательские профили сохраняются в `%APPDATA%\\Zapret2ControlCenter\\config.json`.
@@ -11,10 +14,7 @@
 - Открытие списков и обновление общих списков Flowseal без перезаписи `*-user.txt`.
 - Запрос UAC при запуске стратегии.
 
-## Сборка
-GitHub Actions workflow **Build Windows x64 portable EXE** компилирует Windows x64 release и публикует артефакт `Zapret2ControlCenter.exe`.
+## Ограничения
+Это GUI-оболочка, а не полный zapret bundle. `winws2.exe`, WinDivert, Lua, `blockcheck2.cmd` и остальные файлы бандла предоставляются отдельно. `blockcheck2` запускается в отдельной консоли; интерактивные результаты автоматически не разбираются.
 
-## Важные ограничения
-Это GUI-оболочка, а не полный zapret bundle. `winws2.exe`, WinDivert, Lua, `blockcheck2.cmd` и остальные файлы бандла должны быть предоставлены отдельно. `blockcheck2` запускается в отдельной консоли; интерактивные результаты автоматически не разбираются.
-
-Сборка и runtime-проверка должны быть подтверждены Windows GitHub Actions runner. В текущей среде нет Rust/Cargo, поэтому локальная компиляция не выполнялась.
+EXE не считается проверенным, пока Windows Actions не завершит сборку. Runtime-проверка требует Windows x64, прав администратора, WinDivert и сетевого теста.
