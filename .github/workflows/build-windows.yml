@@ -1,4 +1,5 @@
 name: Build Windows x64 portable EXE
+# Rebuild trigger: validate the committed source archive and produce the portable artifact.
 on:
   workflow_dispatch:
   push:
