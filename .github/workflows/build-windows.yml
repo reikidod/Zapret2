@@ -16,8 +16,17 @@ jobs:
       - name: Extract Rust source
         shell: pwsh
         run: |
+          if (-not (Test-Path -LiteralPath zapret2-rust-source.zip)) {
+            Write-Error "zapret2-rust-source.zip not found in repo root. Commit it to main and re-run."
+            exit 1
+          }
           Expand-Archive -LiteralPath zapret2-rust-source.zip -DestinationPath _source -Force
-          Copy-Item _source/zapret2-rust/* . -Recurse -Force
+          $root = if (Test-Path -LiteralPath _source/zapret2-rust) { '_source/zapret2-rust' } else { '_source' }
+          Copy-Item "$root/*" . -Recurse -Force
+          if (-not (Test-Path -LiteralPath Cargo.toml)) {
+            Write-Error "Cargo.toml not found after extraction."
+            exit 1
+          }
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
