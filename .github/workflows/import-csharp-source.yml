@@ -1,0 +1,96 @@
+name: Import C# project structure
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Zapret2-CSharp-Portable-Source.zip"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: import-csharp-source
+  cancel-in-progress: false
+
+jobs:
+  import-and-build:
+    if: ${{ hashFiles('Zapret2-CSharp-Portable-Source.zip') != '' }}
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Extract source into repository
+        shell: pwsh
+        run: |
+          $archive = Join-Path $PWD "Zapret2-CSharp-Portable-Source.zip"
+          if (!(Test-Path $archive)) { throw "C# source archive is missing." }
+          $extract = Join-Path $env:RUNNER_TEMP "zapret2-csharp-import"
+          if (Test-Path $extract) { Remove-Item $extract -Recurse -Force }
+          Expand-Archive -LiteralPath $archive -DestinationPath $extract -Force
+          Get-ChildItem -LiteralPath $extract -Force | ForEach-Object {
+            Copy-Item -LiteralPath $_.FullName -Destination $PWD -Recurse -Force
+          }
+          Remove-Item $archive -Force
+          if (!(Test-Path "Zapret2.sln")) { throw "Zapret2.sln was not imported." }
+          if (!(Test-Path "src/Zapret2.App/Zapret2.App.csproj")) { throw "WPF app project was not imported." }
+
+      - name: Commit conventional source tree
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if (git diff --cached --quiet) {
+            Write-Host "No source changes to commit."
+          } else {
+            git commit -m "build: import conventional C# solution structure"
+            git push
+          }
+
+      - name: Install .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore Zapret2.sln
+
+      - name: Test
+        run: dotnet test Zapret2.sln --configuration Release --no-restore
+
+      - name: Publish portable single-file EXE
+        run: >-
+          dotnet publish src/Zapret2.App/Zapret2.App.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -p:DebugType=None
+          -p:DebugSymbols=false
+          --output publish/win-x64
+
+      - name: Verify and upload portable EXE
+        shell: pwsh
+        run: |
+          $exe = "publish/win-x64/Zapret2ControlCenter.exe"
+          if (!(Test-Path $exe)) { throw "Portable executable was not produced: $exe" }
+          $size = (Get-Item $exe).Length
+          if ($size -lt 1MB) { throw "Executable is unexpectedly small ($size bytes)." }
+          "Portable EXE size: $size bytes" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Zapret2ControlCenter-Windows-x64
+          path: |
+            publish/win-x64/Zapret2ControlCenter.exe
+            publish/win-x64/README.txt
+          if-no-files-found: warn
+          retention-days: 30
