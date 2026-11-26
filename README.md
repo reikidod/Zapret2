@@ -49,7 +49,7 @@ cargo build --release --target x86_64-pc-windows-msvc
 
 ## Развитие
 
-План работ и критерии готовности находятся в [ROADMAP.md](ROADMAP.md). Правила сборки изменений и оформления PR — в [CONTRIBUTING.md](CONTRIBUTING.md). История заметных изменений — в [CHANGELOG.md](CHANGELOG.md).
+План работ и критерии готовности находятся в [ROADMAP.md](ROADMAP.md). Правила сборки изменений и оформления PR — в [CONTRIBUTING.md](CONTRIBUTING.md). История заметных изменений — в [CHANGELOG.md](CHANGELOG.md). Сообщения об уязвимостях — по правилам [SECURITY.md](SECURITY.md).
 
 ## Безопасность
 
