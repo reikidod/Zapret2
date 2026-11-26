@@ -1,20 +1,56 @@
-# Zapret2 Control Center (Rust)
+# Zapret2 Control Center
 
-Исходный проект Rust + egui находится в `zapret2-rust-source.zip` (Cargo.toml, src/main.rs, .gitignore и workflow snapshot). Рабочий GitHub Actions workflow расположен в `.github/workflows/build-windows.yml`.
+Небольшая Windows-оболочка на Rust и egui для управления установленным **zapret2**. Приложение помогает находить компоненты бандла, выбирать и запускать профили, редактировать пользовательские аргументы и работать со списками.
 
-## Build / portable EXE
-GitHub Actions компилирует Windows x64 release и публикует артефакт `Zapret2ControlCenter.exe`. Откройте вкладку Actions → **Build Windows x64 portable EXE** → последний успешный запуск → Artifacts.
+> GUI не включает сам zapret2, WinDivert или сетевые фильтры. Для работы нужна отдельная совместимая сборка zapret2.
 
-## Возможности исходной версии
-- Fluent-inspired тёмный интерфейс: обзор, стратегии, списки и настройки.
-- Поиск `winws2.exe`, `zapret-lib.lua` и `blockcheck2.cmd` в выбранной папке.
-- Восемь встроенных профилей; пользовательские профили сохраняются в `%APPDATA%\\Zapret2ControlCenter\\config.json`.
-- Запуск/остановка `winws2.exe`, журнал вывода, запуск `blockcheck2.cmd` в отдельной консоли.
-- Импорт аргументов из `.cmd/.bat`, редактор профилей.
-- Открытие списков и обновление общих списков Flowseal без перезаписи `*-user.txt`.
-- Запрос UAC при запуске стратегии.
+## Возможности
 
-## Ограничения
-Это GUI-оболочка, а не полный zapret bundle. `winws2.exe`, WinDivert, Lua, `blockcheck2.cmd` и остальные файлы бандла предоставляются отдельно. `blockcheck2` запускается в отдельной консоли; интерактивные результаты автоматически не разбираются.
+| Раздел | Что доступно |
+|---|---|
+| Обзор | Поиск `winws2.exe`, `zapret-lib.lua` и `blockcheck2.cmd` в выбранной папке |
+| Профили | Восемь встроенных профилей и пользовательские профили |
+| Запуск | Запуск и остановка `winws2.exe`, журнал вывода и запрос UAC |
+| Редактор | Импорт аргументов из BAT/CMD и редактирование профилей |
+| Списки | Открытие списков и обновление общих списков Flowseal без перезаписи файлов `*-user.txt` |
+| Проверка | Запуск `blockcheck2.cmd` в отдельном окне консоли |
 
-EXE не считается проверенным, пока Windows Actions не завершит сборку. Runtime-проверка требует Windows x64, прав администратора, WinDivert и сетевого теста.
+Пользовательская конфигурация хранится в `%APPDATA%\Zapret2ControlCenter\config.json`.
+
+## Скачать и запустить
+
+1. Откройте [последний успешный запуск сборки](https://github.com/reikidod/Zapret2/actions/workflows/build-windows.yml).
+2. Выберите запуск со статусом **Success**.
+3. В разделе **Artifacts** скачайте `Zapret2ControlCenter-Windows-x64`.
+4. Распакуйте архив и запустите `Zapret2ControlCenter.exe`.
+
+Это portable GUI: устанавливать Rust или Python на целевой компьютер не требуется. Сам zapret2 bundle поставляется отдельно.
+
+## Сборка из исходников
+
+Сейчас исходники Rust хранятся в архиве `zapret2-rust-source.zip`. Workflow извлекает его, устанавливает stable Rust и собирает Windows x64:
+
+```powershell
+Expand-Archive .\zapret2-rust-source.zip -DestinationPath .\_source -Force
+Set-Location .\_source\zapret2-rust
+rustup target add x86_64-pc-windows-msvc
+cargo build --release --target x86_64-pc-windows-msvc
+```
+
+Если структура архива изменится, сверяйтесь с [workflow сборки](.github/workflows/build-windows.yml).
+
+## Требования и ограничения
+
+- Windows x64.
+- Отдельная совместимая папка zapret2 с необходимыми исполняемыми файлами, Lua-файлами и библиотеками.
+- Для запуска сетевых стратегий могут потребоваться права администратора и компоненты WinDivert.
+- `blockcheck2.cmd` запускается в отдельной консоли; результаты пока не импортируются в GUI автоматически.
+- Наличие EXE в Actions означает успешную компиляцию, но не подтверждает работу на конкретной системе и совместимость со всеми приложениями.
+
+## Развитие
+
+План работ и критерии готовности находятся в [ROADMAP.md](ROADMAP.md). Правила сборки изменений и оформления PR — в [CONTRIBUTING.md](CONTRIBUTING.md). История заметных изменений — в [CHANGELOG.md](CHANGELOG.md).
+
+## Безопасность
+
+Не запускайте неизвестные стратегии и BAT/CMD-файлы без проверки содержимого. Перед обновлением списков или конфигурации сохраняйте собственные изменения. Сообщения об уязвимостях и проблемах безопасности направляйте владельцу репозитория приватно, не публикуя рабочие эксплойты в открытых issues.
