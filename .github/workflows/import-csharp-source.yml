@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "Zapret2-CSharp-Portable-Source.zip"
+      - "Zapret2-CSharp-Portable-Source.tar.gz"
   workflow_dispatch:
 
 permissions:
@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   import-and-build:
-    if: ${{ hashFiles('Zapret2-CSharp-Portable-Source.zip') != '' }}
+    if: ${{ hashFiles('Zapret2-CSharp-Portable-Source.tar.gz') != '' }}
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
@@ -28,11 +28,12 @@ jobs:
       - name: Extract source into repository
         shell: pwsh
         run: |
-          $archive = Join-Path $PWD "Zapret2-CSharp-Portable-Source.zip"
+          $archive = Join-Path $PWD "Zapret2-CSharp-Portable-Source.tar.gz"
           if (!(Test-Path $archive)) { throw "C# source archive is missing." }
           $extract = Join-Path $env:RUNNER_TEMP "zapret2-csharp-import"
           if (Test-Path $extract) { Remove-Item $extract -Recurse -Force }
-          Expand-Archive -LiteralPath $archive -DestinationPath $extract -Force
+          New-Item -ItemType Directory -Path $extract -Force | Out-Null
+          tar -xzf $archive -C $extract
           Get-ChildItem -LiteralPath $extract -Force | ForEach-Object {
             Copy-Item -LiteralPath $_.FullName -Destination $PWD -Recurse -Force
           }
