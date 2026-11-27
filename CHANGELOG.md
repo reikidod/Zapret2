@@ -1,16 +1,26 @@
-# История изменений
-
-Файл содержит заметные изменения проекта. Это не полный журнал Git-коммитов.
+# Changelog
 
 ## Unreleased
 
-### Документация
-- Добавлен план развития с этапами и критериями готовности.
-- Описаны правила внесения изменений и локальной проверки.
-- Добавлены шаблоны GitHub для ошибок, предложений функций и PR.
-- Добавлены единые настройки редактора и порядок приватного сообщения об уязвимостях.
+### Changed
+- Chose C# / WPF / .NET 10 as the single application stack.
+- Moved the GUI into a conventional Visual Studio solution (`src`, `tests`, `assets`).
+- Preserved profile data compatibility with the previous Python GUI configuration.
+- Preserved built-in strategies and batch helper scripts.
+- Added self-contained single-file Windows x64 publishing and release attachment workflow.
 
-### CI
-- Workflow запускает тесты и Clippy перед release-сборкой.
-- Проверка rustfmt временно отложена: текущий исходный архив содержит неотформатированный `src/main.rs`; её следует вернуть после переноса исходников в обычные отслеживаемые файлы.
-- Переработано описание возможностей, сборки и ограничений приложения.
+### Added
+- Core unit tests for argument parsing, path substitution, `.cmd` import and profile persistence.
+- Windows CI for restore, tests, publish and portable artifact validation.
+
+
+## Unreleased — C# Control Center
+
+- Переработан интерфейс: навигация по разделам «Обзор», «Профили», «Диагностика» и «Настройки».
+- Добавлены импорт и экспорт пользовательских профилей в JSON.
+- Добавлены резервная копия конфигурации и восстановление из `config.json.bak` при повреждении основного файла.
+- Диагностика показывает обнаруженные `winws` / `winws2`, PID и доступные пути процессов.
+- Улучшен поиск bundle: `ZAPRET2_DIR`, PATH, стандартные папки, OneDrive и диски; приоритет отдаётся полному комплекту.
+- Добавлены дополнительные тесты импорта, восстановления профилей, поиска компонентов и стратегий.
+- Улучшены сообщения о запуске/остановке, экспорт журнала и проверка компонентов.
+- Portable EXE по-прежнему не включает сторонние бинарные файлы zapret2 или WinDivert.
