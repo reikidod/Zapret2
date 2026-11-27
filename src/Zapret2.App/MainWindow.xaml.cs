@@ -488,6 +488,13 @@ public partial class MainWindow : Window
                 throw new InvalidOperationException("Проверка перед запуском не пройдена:" +
                     Environment.NewLine + "• " + string.Join(Environment.NewLine + "• ", preflightErrors));
 
+            var scopeWarnings = TrafficScopeAnalyzer.GetWarnings(profileTemplate);
+            if (scopeWarnings.Count > 0 &&
+                MessageBox.Show(string.Join(Environment.NewLine + Environment.NewLine, scopeWarnings) +
+                    Environment.NewLine + Environment.NewLine + "Запустить этот профиль?",
+                    "Проверьте область действия профиля", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                return;
+
             var args = ArgumentParser.Render(profileTemplate, _components);
             if (DebugCheck.IsChecked == true && !args.Contains("--debug", StringComparer.Ordinal)) args.Insert(0, "--debug");
             _runner.Start(_components.Winws2, args);
