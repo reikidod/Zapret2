@@ -20,6 +20,10 @@ Windows-приложение для управления установленн�
 | Диагностика | Поиск компонентов, PID обнаруженных DPI-процессов, запуск `blockcheck2` в отдельной консоли; автоматические отдельные журналы приложения и `winws2` с хранением последних 30 сессий |
 | Сохранность | Автоматическая резервная копия `config.json.bak` и восстановление при повреждении основной конфигурации |
 
+## Классические стратегии Flowseal
+
+На странице «Профили» нажмите **«Загрузить все классические стратегии Flowseal (22)»**. Приложение получает исходные `general.bat`, `general (ALT)`–`ALT13`, `EXP`, `FAKE TLS AUTO` и `SIMPLE FAKE` из [Flowseal/zapret-discord-youtube](https://github.com/Flowseal/zapret-discord-youtube) по закреплённому commit `ffce9179b2b1f2aeb961f4d17274ada3b6d6bea5`. Загружается текст, извлекаются только параметры `winws2.exe`; BAT/CMD не исполняются. Пути к `lists` и игровые фильтры разрешаются из выбранного bundle. Если `utils/game_filter.enabled` отсутствует, игровые фильтры отключены, как в Flowseal по умолчанию. Эти профили не являются гарантией совместимости: проверяйте область действия фильтров перед запуском.
+
 ## Скачать portable EXE
 
 Постоянная ссылка на автоматически обновляемую сборку: [скачать Zapret2ControlCenter.exe](https://github.com/reikidod/Zapret2/releases/download/continuous/Zapret2ControlCenter.exe). После каждого успешного CI на `main` файл в этом релизе заменяется новой версией. Дополнительно сборка сохраняется в GitHub Actions как `Zapret2ControlCenter-Windows-x64`. Устанавливать .NET Runtime не требуется.
