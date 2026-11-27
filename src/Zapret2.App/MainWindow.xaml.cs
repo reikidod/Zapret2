@@ -38,7 +38,13 @@ public partial class MainWindow : Window
         foreach (var profile in _store.Config.Profiles) _profiles.Add(profile);
         ProfilesList.ItemsSource = _profiles;
         var configuredBase = _store.Config.BaseDirectory;
-        if (string.IsNullOrWhiteSpace(configuredBase) || !Directory.Exists(configuredBase))
+        var existingComponents = ComponentDiscovery.Find(configuredBase);
+        var hasCompleteExternalBundle = existingComponents.Winws is not null &&
+            existingComponents.Winws2 is not null && existingComponents.Blockcheck is not null &&
+            existingComponents.Blockcheck2 is not null && existingComponents.LuaDirectory is not null;
+        if (!hasCompleteExternalBundle && _embeddedBundleRoot is not null)
+            configuredBase = _embeddedBundleRoot;
+        else if (string.IsNullOrWhiteSpace(configuredBase) || !Directory.Exists(configuredBase))
             configuredBase = _embeddedBundleRoot ?? configuredBase;
         BasePath.Text = configuredBase;
         if (!string.Equals(_store.Config.BaseDirectory, configuredBase, StringComparison.OrdinalIgnoreCase))
