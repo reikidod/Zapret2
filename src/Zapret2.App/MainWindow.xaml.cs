@@ -133,7 +133,10 @@ public partial class MainWindow : Window
     {
         var admin = WindowsIntegration.IsAdministrator();
         AdminStatus.Text = admin ? "Права администратора" : "Обычный режим";
+        AdminStatusDot.Fill = admin ? (Brush)FindResource("SuccessBrush") : (Brush)FindResource("WarningBrush");
+        AdminStatus.Foreground = admin ? (Brush)FindResource("SuccessBrush") : (Brush)FindResource("MutedBrush");
         DiagnosticAdminText.Text = admin ? "Есть" : "Не получены";
+        DiagnosticAdminText.Foreground = admin ? (Brush)FindResource("SuccessBrush") : (Brush)FindResource("WarningBrush");
     }
 
     private void RefreshComponents()
