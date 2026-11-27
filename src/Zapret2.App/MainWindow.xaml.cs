@@ -415,6 +415,11 @@ public partial class MainWindow : Window
 
     private async void ImportFlowseal_Click(object sender, RoutedEventArgs e)
     {
+        if (MessageBox.Show(
+            "Будут загружены 22 текстовых BAT-файла из закреплённого commit Flowseal. Приложение извлечёт только аргументы winws2 и не будет запускать BAT/CMD. Продолжить?",
+            "Импорт классических профилей Flowseal", MessageBoxButton.YesNo, MessageBoxImage.Information) != MessageBoxResult.Yes)
+            return;
+
         CommitEditor();
         ImportFlowsealButton.IsEnabled = false;
         ImportFlowsealButton.Content = "Загрузка стратегий Flowseal…";
@@ -422,6 +427,20 @@ public partial class MainWindow : Window
         {
             AppendLog($"Загрузка 22 классических стратегий Flowseal (commit {FlowsealClassicImporter.SourceCommit})…");
             var downloaded = await FlowsealClassicImporter.DownloadAsync();
+
+            if (!string.IsNullOrWhiteSpace(_components.ListsDirectory) && Directory.Exists(_components.ListsDirectory))
+            {
+                try
+                {
+                    var created = ListUpdateService.EnsureUserLists(BasePath.Text.Trim());
+                    foreach (var name in created) AppendLog("Создана зависимость профилей Flowseal: " + name);
+                }
+                catch (Exception listError)
+                {
+                    AppendLog("Не удалось создать пользовательские списки автоматически: " + listError.Message);
+                }
+            }
+
             var added = 0;
             foreach (var profile in downloaded)
             {
