@@ -20,7 +20,7 @@ Windows-приложение для управления установленн�
 
 ## Скачать portable EXE
 
-После успешной сборки файл публикуется в GitHub Actions как `Zapret2ControlCenter-Windows-x64`. Для постоянного использования предназначены [GitHub Releases](https://github.com/reikidod/Zapret2/releases/latest): скачайте `Zapret2ControlCenter.exe` и запустите его. Устанавливать .NET Runtime не требуется.
+Постоянная ссылка на автоматически обновляемую сборку: [скачать Zapret2ControlCenter.exe](https://github.com/reikidod/Zapret2/releases/download/continuous/Zapret2ControlCenter.exe). После каждого успешного CI на `main` файл в этом релизе заменяется новой версией. Дополнительно сборка сохраняется в GitHub Actions как `Zapret2ControlCenter-Windows-x64`. Устанавливать .NET Runtime не требуется.
 
 EXE не требует распаковки и не записывает пользовательские профили внутрь каталога программы. Настройки находятся в `%APPDATA%\Zapret2GUI` и сохраняются при замене EXE новой версией.
 
