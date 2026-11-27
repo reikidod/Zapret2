@@ -1,26 +1,25 @@
 # Changelog
 
-## Unreleased
-
-### Changed
-- Chose C# / WPF / .NET 10 as the single application stack.
-- Moved the GUI into a conventional Visual Studio solution (`src`, `tests`, `assets`).
-- Preserved profile data compatibility with the previous Python GUI configuration.
-- Preserved built-in strategies and batch helper scripts.
-- Added self-contained single-file Windows x64 publishing and release attachment workflow.
+## 2026-11-27 — C# / WPF migration
 
 ### Added
-- Core unit tests for argument parsing, path substitution, `.cmd` import and profile persistence.
-- Windows CI for restore, tests, publish and portable artifact validation.
+- Перенесено приложение на C# / WPF / .NET 10 в обычную структуру Visual Studio: `src`, `tests`, `assets`.
+- Добавлены разделы «Обзор», «Профили», «Диагностика» и «Настройки».
+- Перенесены поиск компонентов, редактор аргументов, импорт BAT/CMD, профили, запуск и остановка `winws2`, журнал и ручной запуск `blockcheck2`.
+- Сохранена совместимость с JSON-конфигурацией прежней Python GUI.
+- Добавлены резервное копирование конфигурации и восстановление из `.bak`.
+- Сохранён прежний Rust-архив в `legacy/rust/` для истории и отката.
 
+### Build and release
+- Windows x64 solution build: успешно.
+- Unit tests: 20/20 успешно.
+- Portable publishing: self-contained single-file EXE.
+- Добавлен постоянный GitHub Release `continuous`; его EXE и SHA-256 обновляются после успешного CI на `main`.
+- Сборка: [GitHub Actions run](https://github.com/reikidod/Zapret2/actions/runs/45930530561).
+- Постоянная загрузка: [Zapret2ControlCenter.exe](https://github.com/reikidod/Zapret2/releases/download/continuous/Zapret2ControlCenter.exe).
 
-## Unreleased — C# Control Center
-
-- Переработан интерфейс: навигация по разделам «Обзор», «Профили», «Диагностика» и «Настройки».
-- Добавлены импорт и экспорт пользовательских профилей в JSON.
-- Добавлены резервная копия конфигурации и восстановление из `config.json.bak` при повреждении основного файла.
-- Диагностика показывает обнаруженные `winws` / `winws2`, PID и доступные пути процессов.
-- Улучшен поиск bundle: `ZAPRET2_DIR`, PATH, стандартные папки, OneDrive и диски; приоритет отдаётся полному комплекту.
-- Добавлены дополнительные тесты импорта, восстановления профилей, поиска компонентов и стратегий.
-- Улучшены сообщения о запуске/остановке, экспорт журнала и проверка компонентов.
-- Portable EXE по-прежнему не включает сторонние бинарные файлы zapret2 или WinDivert.
+### Not yet migrated / verified
+- Автоматический разбор результатов `blockcheck2` ещё не реализован.
+- Обновление общих списков Flowseal с сохранением `*-user.txt` ещё не перенесено.
+- Проверка реального запуска на Windows 10/11 с установленным bundle и тесты совместимости Steam, Telegram Proxy, Valorant, Discord и YouTube ещё впереди.
+- Встроенные стратегии остаются примерами, а не универсальными рекомендациями.
