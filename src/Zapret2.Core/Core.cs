@@ -348,7 +348,7 @@ public static class WinwsFinder
 public static class TrafficScopeAnalyzer
 {
     private static readonly Regex PortFilter =
-        new(@"--(?:wf-(?:tcp|udp)-out|filter-(?:tcp|udp))\\s*(?:=|\\s)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        new(@"--(?:wf-(?:tcp|udp)-out|filter-(?:tcp|udp))\s*(?:=|\s)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public static IReadOnlyList<string> GetWarnings(string profileTemplate)
     {
