@@ -545,4 +545,30 @@ public sealed class CoreTests
         }
     }
 
+    [Fact]
+    public void DiagnosticLogStorePersistsSessionsAndPrunesOldest()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "Zapret2Tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var store = new DiagnosticLogStore(directory, maxSessions: 2);
+            var first = store.StartSession("first session");
+            store.Append("winws2 output line");
+            Assert.Contains("winws2 output line", File.ReadAllText(first));
+
+            Thread.Sleep(20);
+            var second = store.StartSession("second session");
+            Thread.Sleep(20);
+            var third = store.StartSession("third session");
+
+            var sessions = store.GetSessions();
+            Assert.Equal(2, sessions.Count);
+            Assert.DoesNotContain(sessions, item => item.Path == first);
+            Assert.Contains(sessions, item => item.Path == second);
+            Assert.Contains(sessions, item => item.Path == third);
+            Assert.Contains("third session", File.ReadAllText(third));
+        }
+        finally { try { Directory.Delete(directory, true); } catch { } }
+    }
+
 }
