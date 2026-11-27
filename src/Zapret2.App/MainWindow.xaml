@@ -29,7 +29,7 @@
                         <TextBlock Text="Z" FontSize="23" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="ZAPRET2" FontSize="16" FontWeight="Bold" LetterSpacing="1"/>
+                        <TextBlock Text="ZAPRET2" FontSize="16" FontWeight="Bold"/>
                         <TextBlock Text="CONTROL CENTER" FontSize="9" Foreground="{StaticResource MutedBrush}"/>
                     </StackPanel>
                 </StackPanel>
