@@ -482,7 +482,13 @@ public partial class MainWindow : Window
                     return;
             }
 
-            var args = ArgumentParser.Render(_current?.Args ?? "", _components);
+            var profileTemplate = _current?.Args ?? "";
+            var preflightErrors = LaunchPreflight.Validate(profileTemplate, _components);
+            if (preflightErrors.Count > 0)
+                throw new InvalidOperationException("Проверка перед запуском не пройдена:" +
+                    Environment.NewLine + "• " + string.Join(Environment.NewLine + "• ", preflightErrors));
+
+            var args = ArgumentParser.Render(profileTemplate, _components);
             if (DebugCheck.IsChecked == true && !args.Contains("--debug", StringComparer.Ordinal)) args.Insert(0, "--debug");
             _runner.Start(_components.Winws2, args);
             RunStatus.Text = "Запускается…";
@@ -517,6 +523,12 @@ public partial class MainWindow : Window
         {
             if (MessageBox.Show("Для корректного теста нужно остановить winws2. Остановить и продолжить?", "blockcheck2", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
             await _runner.StopAsync();
+            if (_runner.IsRunning)
+            {
+                MessageBox.Show("Не удалось подтвердить остановку winws2. blockcheck2 не будет запущен.",
+                    "Остановка не подтверждена", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
         }
         var others = WindowsIntegration.GetRunningDpiProcesses();
         if (others.Count > 0)
