@@ -822,4 +822,29 @@ start "zapret" /min "%BIN%winws2.exe" --debug=0 --wf-tcp-out=80,443,%GameFilterT
         }
     }
 
+    [Fact]
+    public void ProfileImpactAnalyzerExplainsFlowsealDomainAndIpFilters()
+    {
+        const string profile = """
+            --wf-tcp-out=80,443
+            --wf-udp-out=443
+            --hostlist="{LISTS}\list-general.txt"
+            --hostlist-domains=discord.media
+            --hostlist-exclude="{LISTS}\list-exclude.txt"
+            --ipset="{LISTS}\ipset-all.txt"
+            --ipset-exclude="{LISTS}\ipset-exclude.txt"
+            """;
+
+        var impact = ProfileImpactAnalyzer.Analyze(profile);
+        var text = impact.ToDisplayText();
+
+        Assert.Contains("80,443", impact.TcpPortFilters);
+        Assert.Contains("list-general.txt", impact.IncludedHostlists);
+        Assert.Contains("discord.media", impact.IncludedDomains);
+        Assert.Contains("list-exclude.txt", impact.ExcludedHostlists);
+        Assert.Contains("ipset-all.txt", impact.IncludedIpSets);
+        Assert.Contains("ipset-exclude.txt", impact.ExcludedIpSets);
+        Assert.Contains("Доменные исключения", text, StringComparison.Ordinal);
+    }
+
 }
