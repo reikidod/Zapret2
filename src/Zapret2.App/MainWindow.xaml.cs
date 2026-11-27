@@ -413,6 +413,52 @@ public partial class MainWindow : Window
         catch (Exception ex) { MessageBox.Show(ex.Message, "Импорт профилей", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 
+    private async void ImportFlowseal_Click(object sender, RoutedEventArgs e)
+    {
+        CommitEditor();
+        ImportFlowsealButton.IsEnabled = false;
+        ImportFlowsealButton.Content = "Загрузка стратегий Flowseal…";
+        try
+        {
+            AppendLog($"Загрузка 22 классических стратегий Flowseal (commit {FlowsealClassicImporter.SourceCommit})…");
+            var downloaded = await FlowsealClassicImporter.DownloadAsync();
+            var added = 0;
+            foreach (var profile in downloaded)
+            {
+                if (_profiles.Any(existing => existing.Name.Equals(profile.Name, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+
+                profile.Name = _store.UniqueName(profile.Name);
+                _profiles.Add(profile);
+                _store.Config.Profiles.Add(profile);
+                added++;
+            }
+
+            _store.Save();
+            if (added > 0)
+            {
+                var first = downloaded.FirstOrDefault(profile => _profiles.Contains(profile));
+                if (first is not null) ProfilesList.SelectedItem = first;
+            }
+
+            AppendLog($"Flowseal classic: получено {downloaded.Count}, добавлено новых профилей {added}. BAT/CMD не запускались.");
+            MessageBox.Show(
+                $"Получено стратегий: {downloaded.Count}.{Environment.NewLine}Добавлено новых профилей: {added}.{Environment.NewLine}{Environment.NewLine}" +
+                "Оригинальные BAT/CMD не запускались. Игровые фильтры читаются из utils/game_filter.enabled; без него отключены.",
+                "Стратегии Flowseal добавлены", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            AppendLog("Ошибка импорта Flowseal: " + ex.Message);
+            MessageBox.Show(ex.Message, "Не удалось загрузить стратегии Flowseal", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            ImportFlowsealButton.IsEnabled = true;
+            ImportFlowsealButton.Content = "Загрузить все классические стратегии Flowseal (22)";
+        }
+    }
+
     private void ExportProfiles_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new SaveFileDialog { Filter = "Профили Zapret2 (*.json)|*.json", FileName = "zapret2-profiles.json" };
@@ -495,6 +541,11 @@ public partial class MainWindow : Window
             }
 
             var profileTemplate = _current?.Args ?? "";
+            if (_components.ListsDirectory is { } listsDirectory && Directory.Exists(listsDirectory))
+            {
+                var createdLists = ListUpdateService.EnsureUserLists(BasePath.Text.Trim());
+                foreach (var name in createdLists) AppendLog("Создан пользовательский список: " + name);
+            }
             var preflightErrors = LaunchPreflight.Validate(profileTemplate, _components);
             if (preflightErrors.Count > 0)
                 throw new InvalidOperationException("Проверка перед запуском не пройдена:" +
