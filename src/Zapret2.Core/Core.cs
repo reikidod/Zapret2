@@ -345,6 +345,44 @@ public static class WinwsFinder
     }
 }
 
+public static class LaunchPreflight
+{
+    private static readonly Regex LuaReference =
+        new(@"\\{LUA\\}[\\\\/]+([^\\s\""]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    public static IReadOnlyList<string> Validate(string profileTemplate, Components components)
+    {
+        var errors = new List<string>();
+
+        if (string.IsNullOrWhiteSpace(components.Winws2))
+            errors.Add("Не найден winws2.exe.");
+        else if (!File.Exists(components.Winws2))
+            errors.Add("Файл winws2.exe больше не существует по сохранённому пути.");
+
+        var referencesLua = profileTemplate.Contains("{LUA}", StringComparison.OrdinalIgnoreCase);
+        if (referencesLua)
+        {
+            if (string.IsNullOrWhiteSpace(components.LuaDirectory) || !Directory.Exists(components.LuaDirectory))
+            {
+                errors.Add("Профиль использует {LUA}, но каталог Lua не найден. Повторно выберите папку zapret2 bundle.");
+            }
+            else
+            {
+                foreach (Match match in LuaReference.Matches(profileTemplate))
+                {
+                    var relativeName = match.Groups[1].Value.TrimEnd('\\\\', '/');
+                    if (relativeName.Length == 0) continue;
+                    var path = Path.Combine(components.LuaDirectory, relativeName);
+                    if (!File.Exists(path))
+                        errors.Add($"Не найден Lua-файл: {relativeName}");
+                }
+            }
+        }
+
+        return errors;
+    }
+}
+
 public static class ArgumentParser
 {
     private static readonly Regex Variable = new(@"\{(BIN|LUA)\}([\\/]?)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
