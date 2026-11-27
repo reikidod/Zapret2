@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "Zapret2-CSharp-Portable-Source.tar.gz"
+      - "migration-parts/**"
 
 permissions:
   contents: write
@@ -23,21 +23,26 @@ jobs:
         with:
           persist-credentials: true
 
-      - name: Verify and extract C# source
+      - name: Reassemble and extract C# source
         shell: pwsh
         run: |
+          $parts = Get-ChildItem "migration-parts" -Filter "*.b64" | Sort-Object Name
+          if ($parts.Count -lt 2) { throw "Migration archive parts are missing." }
+          $joined = ($parts | ForEach-Object { (Get-Content -LiteralPath $_.FullName -Raw).Trim() }) -join ""
+          $bytes = [Convert]::FromBase64String($joined)
           $archive = Join-Path $PWD "Zapret2-CSharp-Portable-Source.tar.gz"
-          if (!(Test-Path $archive)) { throw "C# source archive is missing." }
+          [System.IO.File]::WriteAllBytes($archive, $bytes)
+
           $extract = Join-Path $env:RUNNER_TEMP "zapret2-csharp-import"
           if (Test-Path $extract) { Remove-Item $extract -Recurse -Force }
           New-Item -ItemType Directory -Path $extract -Force | Out-Null
           tar -xzf $archive -C $extract
 
           if (!(Test-Path (Join-Path $extract "Zapret2.sln"))) {
-            throw "Zapret2.sln is missing from the archive root."
+            throw "Zapret2.sln is missing from the reconstructed archive."
           }
           if (!(Test-Path (Join-Path $extract "src/Zapret2.App/Zapret2.App.csproj"))) {
-            throw "WPF application project is missing from the archive."
+            throw "WPF application project is missing from the reconstructed archive."
           }
 
           Get-ChildItem -LiteralPath $extract -Force | ForEach-Object {
@@ -45,6 +50,7 @@ jobs:
           }
 
           Remove-Item $archive -Force
+          Remove-Item "migration-parts" -Recurse -Force
           if (Test-Path "Zapret2-CSharp-Portable-Source.tar.xz") {
             Remove-Item "Zapret2-CSharp-Portable-Source.tar.xz" -Force
           }
