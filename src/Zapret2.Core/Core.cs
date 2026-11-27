@@ -345,6 +345,22 @@ public static class WinwsFinder
     }
 }
 
+public static class TrafficScopeAnalyzer
+{
+    private static readonly Regex PortFilter =
+        new(@"--(?:wf-(?:tcp|udp)-out|filter-(?:tcp|udp))\\s*(?:=|\\s)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    public static IReadOnlyList<string> GetWarnings(string profileTemplate)
+    {
+        if (!PortFilter.IsMatch(profileTemplate)) return [];
+        return
+        [
+            "Профиль использует фильтры по сетевым протоколам/портам, а не по имени приложения. Он может затрагивать трафик других программ, если тот попадает под эти правила.",
+            "Совместимость Steam, Telegram Proxy, Valorant и других приложений не гарантируется. При проблемах остановите профиль и проверьте его правила."
+        ];
+    }
+}
+
 public static class LaunchPreflight
 {
     private static readonly Regex LuaReference =
