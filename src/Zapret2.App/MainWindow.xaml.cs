@@ -603,7 +603,8 @@ public partial class MainWindow : Window
                 var count = File.ReadLines(path).Count(line =>
                     !string.IsNullOrWhiteSpace(line) &&
                     !line.TrimStart().StartsWith('#') &&
-                    !line.TrimStart().StartsWith(';'));
+                    !line.TrimStart().StartsWith(';') &&
+                    !line.TrimStart().StartsWith("//", StringComparison.Ordinal));
                 lines.Add($"● {item.FileName} — {count:N0} записей · {info.Length / 1024.0:N1} КБ");
             }
 
@@ -624,6 +625,11 @@ public partial class MainWindow : Window
             MessageBox.Show("Сначала выберите папку zapret2 bundle.", "Списки", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
+
+        if (MessageBox.Show(
+            "Общие списки будут заменены только после загрузки и проверки всех файлов. Перед заменой создаётся резервная копия в lists/.backups. Пользовательские *-user.txt не изменяются. Продолжить?",
+            "Обновление общих списков", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            return;
 
         UpdateListsButton.IsEnabled = false;
         try
@@ -694,7 +700,9 @@ public partial class MainWindow : Window
             var directory = ListUpdateService.GetListsDirectory(BasePath.Text.Trim());
             if (!Directory.Exists(directory))
                 throw new DirectoryNotFoundException("Папка lists не найдена. Проверьте выбранный корень bundle.");
-            Process.Start(new ProcessStartInfo("explorer.exe", directory) { UseShellExecute = true });
+            var startInfo = new ProcessStartInfo("explorer.exe") { UseShellExecute = true };
+            startInfo.ArgumentList.Add(directory);
+            Process.Start(startInfo);
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, "Папка списков", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
