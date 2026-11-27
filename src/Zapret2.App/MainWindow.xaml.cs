@@ -2,6 +2,7 @@ using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -197,14 +198,13 @@ public partial class MainWindow : Window
 
     private void Browse_Click(object sender, RoutedEventArgs e)
     {
-        using var dialog = new System.Windows.Forms.FolderBrowserDialog
+        var dialog = new OpenFolderDialog
         {
-            Description = "Выберите распакованную папку zapret2 bundle",
-            UseDescriptionForTitle = true,
-            ShowNewFolderButton = false
+            Title = "Выберите распакованную папку zapret2 bundle",
+            Multiselect = false
         };
-        if (Directory.Exists(BasePath.Text)) dialog.SelectedPath = BasePath.Text;
-        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK) BasePath.Text = dialog.SelectedPath;
+        if (Directory.Exists(BasePath.Text)) dialog.InitialDirectory = BasePath.Text;
+        if (dialog.ShowDialog(this) == true) BasePath.Text = dialog.FolderName;
     }
 
     private async void Find_Click(object sender, RoutedEventArgs e)
