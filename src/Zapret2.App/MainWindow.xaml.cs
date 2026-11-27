@@ -566,7 +566,7 @@ public partial class MainWindow : Window
             var profileTemplate = _current?.Args ?? "";
             if (_components.ListsDirectory is { } listsDirectory && Directory.Exists(listsDirectory))
             {
-                var createdLists = ListUpdateService.EnsureUserLists(BasePath.Text.Trim());
+                var createdLists = ListUpdateService.EnsureUserLists(GetResolvedBundleRoot());
                 foreach (var name in createdLists) AppendLog("Создан пользовательский список: " + name);
             }
             var preflightErrors = LaunchPreflight.Validate(profileTemplate, _components);
