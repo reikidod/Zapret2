@@ -42,7 +42,7 @@ public sealed class CoreTests
     [Fact]
     public void ImportCmdConvertsBundleVariables()
     {
-        var input = "start \"zapret\" /min \"%~dp0winws2.exe\" --wf-tcp-out=80,443 ^\r\n --lua-init=@\"%LUA%zapret-lib.lua\" --lua-desync=fake\r\n";
+        var input = "start \"zapret\" /min \"%~dp0winws2.exe\" --wf-tcp-out=80,443 ^\r\n --lua-init=@\"%LUA%zapret-lib.lua\" --lua-desync=fake --filter-l7=@\"%~dp0lua\\filter.lua\"\r\n";
         var (args, warnings) = ArgumentParser.ImportCmd(input);
         Assert.Contains("{BIN}", args);
         Assert.Contains("{LUA}", args);
@@ -189,7 +189,7 @@ public sealed class CoreTests
 
         var (_, unknownWarnings) = ArgumentParser.ImportCmd("winws2.exe --x=%UNKNOWN%value\n");
         Assert.NotEmpty(unknownWarnings);
-        Assert.Contains("%UNKNOWN%", unknownWarnings[0]);
+        Assert.Contains("%UNKNOWN%", unknownWarnings);
     }
 
     [Fact]
