@@ -785,4 +785,41 @@ start "zapret" /min "%BIN%winws2.exe" --debug=0 --wf-tcp-out=80,443,%GameFilterT
         finally { try { Directory.Delete(root, true); } catch { } }
     }
 
+    [Fact]
+    public async Task FlowsealClassicImporterDownloadsAllPinnedProfilesAsText()
+    {
+        var script = """
+            start "zapret" /min "%BIN%winws2.exe" --wf-tcp-out=80,%GameFilterTCP% ^
+            --lua-init=@"%LUA%zapret-lib.lua" ^
+            --hostlist="%LISTS%list-general.txt"
+            """;
+        using var client = new HttpClient(new FlowsealScriptHandler(script));
+
+        var profiles = await FlowsealClassicImporter.DownloadAsync(client);
+
+        Assert.Equal(22, profiles.Count);
+        Assert.All(profiles, profile =>
+        {
+            Assert.StartsWith("Flowseal · ", profile.Name, StringComparison.Ordinal);
+            Assert.Contains("{LUA}", profile.Args);
+            Assert.Contains("{LISTS}", profile.Args);
+            Assert.Contains(FlowsealClassicImporter.SourceCommit, profile.Note, StringComparison.Ordinal);
+            Assert.Contains("BAT/CMD не запускается", profile.Note, StringComparison.Ordinal);
+        });
+    }
+
+    private sealed class FlowsealScriptHandler(string script) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (!string.Equals(request.RequestUri?.Host, "raw.githubusercontent.com", StringComparison.OrdinalIgnoreCase))
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.BadRequest));
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(script, Encoding.UTF8, "text/plain")
+            });
+        }
+    }
+
 }
