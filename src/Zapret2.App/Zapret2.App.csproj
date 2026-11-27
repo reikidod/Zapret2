@@ -17,4 +17,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Zapret2.Core\Zapret2.Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\zapret-runtime.zip" LogicalName="Zapret2.App.Resources.zapret-runtime.zip" Condition="Exists('Resources\zapret-runtime.zip')" />
+  </ItemGroup>
 </Project>

@@ -41,6 +41,28 @@ public static class FlowsealClassicImporter
         "general (SIMPLE FAKE ALT2).bat"
     ];
 
+    public static IReadOnlyList<Profile> ImportDirectory(string directory)
+    {
+        if (!Directory.Exists(directory)) throw new DirectoryNotFoundException("Локальный каталог стратегий Flowseal не найден.");
+        var profiles = new List<Profile>(Files.Length);
+        foreach (var file in Files)
+        {
+            var path = Path.Combine(directory, file);
+            if (!File.Exists(path)) throw new FileNotFoundException("Встроенный набор стратегий неполон: " + file, path);
+            var info = new FileInfo(path);
+            if (info.Length == 0 || info.Length > MaxScriptBytes) throw new InvalidDataException($"Flowseal script {file} is empty or too large.");
+            var source = new UTF8Encoding(false, true).GetString(File.ReadAllBytes(path)).TrimStart('\uFEFF');
+            profiles.Add(new Profile
+            {
+                Name = "Flowseal · " + Path.GetFileNameWithoutExtension(file),
+                Args = ExtractArguments(source, file),
+                Engine = "winws2",
+                Note = $"Оригинальный профиль Flowseal: {file}. Встроенная версия источника: {SourceCommit}. BAT/CMD не запускается — извлекаются только параметры winws2."
+            });
+        }
+        return profiles;
+    }
+
     public static async Task<IReadOnlyList<Profile>> DownloadAsync(
         HttpClient? httpClient = null,
         CancellationToken cancellationToken = default)

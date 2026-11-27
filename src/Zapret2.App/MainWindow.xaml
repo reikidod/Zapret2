@@ -102,9 +102,9 @@
                     <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
                     <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="18" Margin="0,0,10,0">
                         <StackPanel>
-                            <TextBlock Text="WINWS2" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}"/>
+                            <TextBlock Text="WINWS / WINWS2" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}"/>
                             <TextBlock x:Name="WinwsStatusText" Text="Не найден" FontSize="17" FontWeight="SemiBold" Margin="0,8,0,0"/>
-                            <TextBlock Text="Исполняемый файл" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/>
+                            <TextBlock Text="Оба сетевых движка" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/>
                         </StackPanel>
                     </Border>
                     <Border Grid.Column="1" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="18" Margin="5,0">
@@ -116,9 +116,9 @@
                     </Border>
                     <Border Grid.Column="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="18" Margin="10,0,0,0">
                         <StackPanel>
-                            <TextBlock Text="BLOCKCHECK2" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}"/>
+                            <TextBlock Text="BLOCKCHECK / BLOCKCHECK2" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}"/>
                             <TextBlock x:Name="BlockcheckStatusText" Text="Не найден" FontSize="17" FontWeight="SemiBold" Margin="0,8,0,0"/>
-                            <TextBlock Text="Инструмент диагностики" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/>
+                            <TextBlock Text="Обе версии диагностики" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/>
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -127,7 +127,7 @@
                     <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="18" Margin="0,0,9,0">
                         <StackPanel>
                             <TextBlock Text="Быстрый старт" FontSize="16" FontWeight="SemiBold"/>
-                            <TextBlock Text="1. Укажите папку установленного zapret2 bundle.&#10;2. Выберите профиль и проверьте его аргументы.&#10;3. Запустите winws2 от имени администратора.&#10;4. При проблемах остановите процесс и проверьте журнал." TextWrapping="Wrap" LineHeight="24" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,12,0,14"/>
+                            <TextBlock Text="1. Комплект winws, winws2 и blockcheck уже встроен.&#10;2. Выберите движок в настройках профиля.&#10;3. Запустите профиль от имени администратора.&#10;4. Для теста используйте соответствующий blockcheck." TextWrapping="Wrap" LineHeight="24" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,12,0,14"/>
                             <WrapPanel>
                                 <Button Content="Выбрать папку" Click="Browse_Click"/>
                                 <Button Content="Найти автоматически" Click="Find_Click"/>
@@ -138,8 +138,8 @@
                     <Border Grid.Column="1" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="18" Margin="9,0,0,0">
                         <StackPanel>
                             <TextBlock Text="Перед запуском" FontSize="16" FontWeight="SemiBold"/>
-                            <TextBlock Text="Приложение управляет winws2, но не включает сам zapret2 и драйвер WinDivert. Не запускайте одновременно несколько DPI-фильтров: они могут конфликтовать." TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,10,0,12"/>
-                            <TextBlock Text="Профили являются примерами. Совместимость со Steam, Telegram Proxy, Valorant и другими программами зависит от конкретных правил и конфигурации." TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" FontSize="12"/>
+                            <TextBlock Text="Оба движка, WinDivert, Lua и Cygwin уже входят в portable EXE. При первом запуске комплект распаковывается локально. Не запускайте два DPI-фильтра одновременно." TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,10,0,12"/>
+                            <TextBlock Text="Классический blockcheck и blockcheck2 запускаются отдельно. Перед тестом приложение останавливает свой движок и проверяет другие DPI-процессы." TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" FontSize="12"/>
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -152,7 +152,7 @@
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Top">
                             <TextBlock Text="Ваши профили" FontSize="16" FontWeight="SemiBold" Margin="4,3,0,3"/>
-                            <TextBlock Text="Встроенные, Flowseal classic и пользовательские настройки winws2" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="4,3,0,12"/>
+                            <TextBlock Text="Профили для классического Zapret и Zapret2" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="4,3,0,12"/>
                         </StackPanel>
                         <ListBox x:Name="ProfilesList" SelectionChanged="ProfilesList_SelectionChanged" DisplayMemberPath="Name"/>
                         <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
@@ -166,20 +166,25 @@
                                 <Button Content="Импорт JSON" Click="ImportProfiles_Click"/>
                                 <Button Content="Экспорт JSON" Click="ExportProfiles_Click"/>
                             </WrapPanel>
-                            <Button x:Name="ImportFlowsealButton" Content="Импортировать 22 стратегии Flowseal" ToolTip="Загрузить официальные BAT-профили Flowseal. BAT/CMD не запускаются." Click="ImportFlowseal_Click" Margin="0,7,0,0"/>
+                            <Button x:Name="ImportFlowsealButton" Content="Импортировать 22 стратегии Flowseal (офлайн)" ToolTip="Импорт из встроенного комплекта. Интернет не требуется; BAT/CMD не запускаются." Click="ImportFlowseal_Click" Margin="0,7,0,0"/>
                         </StackPanel>
                     </DockPanel>
                 </Border>
                 <Border Grid.Column="1" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="22">
                     <Grid>
-                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                         <TextBlock Text="Название" VerticalAlignment="Center" Margin="0,0,14,0"/>
                         <TextBox x:Name="ProfileName" Grid.Column="1" TextChanged="ProfileEditor_Changed"/>
-                        <TextBlock x:Name="ProfileNote" Grid.Row="1" Grid.ColumnSpan="2" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,10,0,12"/>
-                        <TextBox x:Name="ArgumentsEditor" Grid.Row="2" Grid.ColumnSpan="2" AcceptsReturn="True" AcceptsTab="True"
+                        <TextBlock Text="Движок" Grid.Row="1" VerticalAlignment="Center" Margin="0,8,14,8"/>
+                        <ComboBox x:Name="EnginePicker" Grid.Row="1" Grid.Column="1" Margin="0,6,0,6" SelectedIndex="1" SelectionChanged="EnginePicker_SelectionChanged">
+                            <ComboBoxItem Content="Классический Zapret — winws.exe" Tag="winws"/>
+                            <ComboBoxItem Content="Zapret2 — winws2.exe" Tag="winws2"/>
+                        </ComboBox>
+                        <TextBlock x:Name="ProfileNote" Grid.Row="2" Grid.ColumnSpan="2" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,10"/>
+                        <TextBox x:Name="ArgumentsEditor" Grid.Row="3" Grid.ColumnSpan="2" AcceptsReturn="True" AcceptsTab="True"
                                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" FontFamily="Cascadia Code,Consolas" FontSize="13" TextChanged="ProfileEditor_Changed"/>
-                        <WrapPanel Grid.Row="3" Grid.ColumnSpan="2" HorizontalAlignment="Right" Margin="0,12,0,0">
+                        <WrapPanel Grid.Row="4" Grid.ColumnSpan="2" HorizontalAlignment="Right" Margin="0,12,0,0">
                             <Button Content="Импорт из .cmd/.bat" Click="Import_Click"/>
                             <Button Content="Проверить и скопировать команду" Click="ShowCommand_Click"/>
                             <Button Content="Сохранить" Style="{StaticResource AccentButtonStyle}" Click="SaveProfile_Click"/>

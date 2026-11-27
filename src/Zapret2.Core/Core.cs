@@ -15,15 +15,20 @@ public sealed class Profile
     public string Args { get; set; } = "";
     [JsonPropertyName("note")]
     public string Note { get; set; } = "";
+    [JsonPropertyName("engine")]
+    public string Engine { get; set; } = "winws2";
 }
 
 public sealed class Components
 {
+    public string? Winws { get; set; }
     public string? Winws2 { get; set; }
     public string? LuaDirectory { get; set; }
     public string? Blockcheck { get; set; }
-    public string? BinaryDirectory => Winws2 is null ? null : Path.GetDirectoryName(Winws2);
-    public string? ListsDirectory => BinaryDirectory is null ? null : Path.GetFullPath(Path.Combine(BinaryDirectory, "..", "lists"));
+    public string? Blockcheck2 { get; set; }
+    public string? BinaryDirectory => Path.GetDirectoryName(Winws2 ?? Winws ?? "");
+    public string? ListsDirectory => string.IsNullOrWhiteSpace(BinaryDirectory)
+        ? null : Path.GetFullPath(Path.Combine(BinaryDirectory, "..", "lists"));
     public string GameFilterTCP => GameFilterSettings.Read(BinaryDirectory).Tcp;
     public string GameFilterUDP => GameFilterSettings.Read(BinaryDirectory).Udp;
 }
@@ -222,7 +227,8 @@ public sealed class ProfileStore
         {
             Name = string.IsNullOrWhiteSpace(item.Name) ? "Импортированный профиль" : item.Name.Trim(),
             Args = item.Args ?? "",
-            Note = item.Note ?? ""
+            Note = item.Note ?? "",
+            Engine = string.Equals(item.Engine, "winws", StringComparison.OrdinalIgnoreCase) ? "winws" : "winws2"
         }).ToList();
         var oversized = valid.FirstOrDefault(item => item.Args.Length > 256_000);
         if (oversized is not null)
@@ -274,13 +280,12 @@ public sealed class ProfileStore
 
 public static class ComponentDiscovery
 {
-    public static Components Find(string? baseDirectory, int maxDepth = 6)
+    public static Components Find(string? baseDirectory, int maxDepth = 7)
     {
         var result = new Components();
-        if (string.IsNullOrWhiteSpace(baseDirectory) || !System.IO.Directory.Exists(baseDirectory)) return result;
-        var root = new DirectoryInfo(baseDirectory);
+        if (string.IsNullOrWhiteSpace(baseDirectory) || !Directory.Exists(baseDirectory)) return result;
         var stack = new Stack<(DirectoryInfo Dir, int Depth)>();
-        stack.Push((root, 0));
+        stack.Push((new DirectoryInfo(baseDirectory), 0));
         while (stack.Count > 0)
         {
             var (dir, depth) = stack.Pop();
@@ -288,20 +293,20 @@ public static class ComponentDiscovery
             try { files = dir.GetFiles(); } catch { continue; }
             foreach (var file in files)
             {
+                if (result.Winws is null && file.Name.Equals("winws.exe", StringComparison.OrdinalIgnoreCase)) result.Winws = file.FullName;
                 if (result.Winws2 is null && file.Name.Equals("winws2.exe", StringComparison.OrdinalIgnoreCase)) result.Winws2 = file.FullName;
                 if (result.LuaDirectory is null && file.Name.Equals("zapret-lib.lua", StringComparison.OrdinalIgnoreCase)) result.LuaDirectory = dir.FullName;
-                if (result.Blockcheck is null && file.Name.Equals("blockcheck2.cmd", StringComparison.OrdinalIgnoreCase)) result.Blockcheck = file.FullName;
+                if (result.Blockcheck is null && file.Name.Equals("blockcheck.cmd", StringComparison.OrdinalIgnoreCase)) result.Blockcheck = file.FullName;
+                if (result.Blockcheck2 is null && file.Name.Equals("blockcheck2.cmd", StringComparison.OrdinalIgnoreCase)) result.Blockcheck2 = file.FullName;
             }
-            if (result.Winws2 is not null && result.LuaDirectory is not null && result.Blockcheck is not null) break;
+            if (result.Winws is not null && result.Winws2 is not null && result.LuaDirectory is not null &&
+                result.Blockcheck is not null && result.Blockcheck2 is not null) break;
             if (depth >= maxDepth) continue;
             DirectoryInfo[] children;
             try { children = dir.GetDirectories(); } catch { continue; }
             foreach (var child in children)
             {
-                try
-                {
-                    if ((child.Attributes & FileAttributes.ReparsePoint) != 0) continue;
-                }
+                try { if ((child.Attributes & FileAttributes.ReparsePoint) != 0) continue; }
                 catch { continue; }
                 if (!child.Name.Equals(".git", StringComparison.OrdinalIgnoreCase) &&
                     !child.Name.Equals("cygwin", StringComparison.OrdinalIgnoreCase))
@@ -362,7 +367,7 @@ public static class WinwsFinder
         if (!string.IsNullOrWhiteSpace(pathValue))
         {
             foreach (var entry in pathValue.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                if (File.Exists(Path.Combine(entry, "winws2.exe"))) roots.Insert(0, entry);
+                if (File.Exists(Path.Combine(entry, "winws2.exe")) || File.Exists(Path.Combine(entry, "winws.exe"))) roots.Insert(0, entry);
         }
         foreach (var drive in DriveInfo.GetDrives().Where(d => d.IsReady))
             roots.Add(drive.RootDirectory.FullName);
@@ -376,7 +381,7 @@ public static class WinwsFinder
         DirectoryInfo? ancestor = folder;
         for (var i = 0; i <= 3 && ancestor is not null; i++, ancestor = ancestor.Parent)
         {
-            if (!File.Exists(Path.Combine(ancestor.FullName, "blockcheck", "blockcheck2.cmd"))) continue;
+            if (!File.Exists(Path.Combine(ancestor.FullName, "blockcheck", "blockcheck2.cmd")) && !File.Exists(Path.Combine(ancestor.FullName, "blockcheck", "blockcheck.cmd"))) continue;
             bundleRoot = ancestor;
             break;
         }
@@ -394,7 +399,7 @@ public static class WinwsFinder
             string[] files;
             try { files = Directory.GetFiles(path); } catch { continue; }
             foreach (var file in files)
-                if (Path.GetFileName(file).Equals("winws2.exe", StringComparison.OrdinalIgnoreCase)) found.Add(file);
+                if (Path.GetFileName(file).Equals("winws2.exe", StringComparison.OrdinalIgnoreCase) || Path.GetFileName(file).Equals("winws.exe", StringComparison.OrdinalIgnoreCase)) found.Add(file);
             if (depth >= maxDepth) continue;
             string[] dirs;
             try { dirs = Directory.GetDirectories(path); } catch { continue; }
@@ -434,40 +439,41 @@ public static class LaunchPreflight
     private static readonly Regex ListReference =
         new(@"\{LISTS\}[\\/]+([^\s""]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-    public static IReadOnlyList<string> Validate(string profileTemplate, Components components)
+    public static IReadOnlyList<string> Validate(string profileTemplate, Components components, string engine = "winws2")
     {
         var errors = new List<string>();
-
-        if (string.IsNullOrWhiteSpace(components.Winws2))
-            errors.Add("Не найден winws2.exe.");
-        else if (!File.Exists(components.Winws2))
-            errors.Add("Файл winws2.exe больше не существует по сохранённому пути.");
-
-        var referencesLua = profileTemplate.Contains("{LUA}", StringComparison.OrdinalIgnoreCase);
-        if (referencesLua)
+        var classic = engine.Equals("winws", StringComparison.OrdinalIgnoreCase);
+        var executable = classic ? components.Winws : components.Winws2;
+        var engineName = classic ? "winws.exe" : "winws2.exe";
+        if (string.IsNullOrWhiteSpace(executable))
+            errors.Add($"Не найден {engineName}.");
+        else
+        {
+            if (!File.Exists(executable)) errors.Add($"Файл {engineName} больше не существует по сохранённому пути.");
+            var directory = Path.GetDirectoryName(executable)!;
+            if (!File.Exists(Path.Combine(directory, "WinDivert.dll"))) errors.Add("Не найден WinDivert.dll рядом с выбранным движком.");
+            if (!File.Exists(Path.Combine(directory, "WinDivert64.sys"))) errors.Add("Не найден WinDivert64.sys рядом с выбранным движком.");
+            if (!File.Exists(Path.Combine(directory, "cygwin1.dll"))) errors.Add("Не найден cygwin1.dll рядом с выбранным движком.");
+        }
+        if (profileTemplate.Contains("{LUA}", StringComparison.OrdinalIgnoreCase))
         {
             if (string.IsNullOrWhiteSpace(components.LuaDirectory) || !Directory.Exists(components.LuaDirectory))
-            {
-                errors.Add("Профиль использует {LUA}, но каталог Lua не найден. Повторно выберите папку zapret2 bundle.");
-            }
+                errors.Add("Профиль использует {LUA}, но каталог Lua не найден.");
             else
             {
                 foreach (Match match in LuaReference.Matches(profileTemplate))
                 {
                     var relativeName = match.Groups[1].Value.TrimEnd('\\', '/');
-                    if (relativeName.Length == 0) continue;
-                    var path = Path.Combine(components.LuaDirectory, relativeName);
-                    if (!File.Exists(path))
+                    if (relativeName.Length > 0 && !File.Exists(Path.Combine(components.LuaDirectory, relativeName)))
                         errors.Add($"Не найден Lua-файл: {relativeName}");
                 }
             }
         }
-
         var listMatches = ListReference.Matches(profileTemplate);
         if (listMatches.Count > 0)
         {
             if (string.IsNullOrWhiteSpace(components.ListsDirectory) || !Directory.Exists(components.ListsDirectory))
-                errors.Add("Профиль Flowseal использует папку lists, но она не найдена рядом с bin.");
+                errors.Add("Профиль использует папку lists, но она не найдена рядом с bundle.");
             else
             {
                 foreach (Match match in listMatches)
@@ -478,7 +484,6 @@ public static class LaunchPreflight
                 }
             }
         }
-
         return errors;
     }
 }
@@ -602,7 +607,7 @@ public sealed class WinwsRunner : IDisposable
 
     public void Start(string exe, IReadOnlyList<string> args)
     {
-        if (!File.Exists(exe)) throw new FileNotFoundException("Исполняемый файл winws2.exe не найден.", exe);
+        if (!File.Exists(exe)) throw new FileNotFoundException("Исполняемый файл выбранного движка не найден.", exe);
 
         lock (_sync)
         {
@@ -615,7 +620,7 @@ public sealed class WinwsRunner : IDisposable
                 catch (InvalidOperationException) { previousExited = true; }
 
                 if (!previousExited)
-                    throw new InvalidOperationException("winws2 уже запущен.");
+                    throw new InvalidOperationException("DPI-движок уже запущен.");
 
                 if (_pumpTask is { IsCompleted: false })
                     throw new InvalidOperationException("Предыдущий процесс завершился, но журнал ещё обрабатывается. Повторите запуск через несколько секунд.");
@@ -643,7 +648,7 @@ public sealed class WinwsRunner : IDisposable
             var process = new Process { StartInfo = start, EnableRaisingEvents = true };
             try
             {
-                if (!process.Start()) throw new InvalidOperationException("Windows не смог запустить winws2.exe.");
+                if (!process.Start()) throw new InvalidOperationException("Windows не смог запустить выбранный DPI-движок.");
             }
             catch
             {
@@ -793,7 +798,7 @@ public static class WindowsIntegration
 
     public static void LaunchBlockcheck(string script)
     {
-        if (!File.Exists(script)) throw new FileNotFoundException("blockcheck2.cmd не найден.", script);
+        if (!File.Exists(script)) throw new FileNotFoundException("Файл blockcheck не найден.", script);
         var quoted = "\"\"" + script + "\"\"";
         Process.Start(new ProcessStartInfo("cmd.exe", $"/d /s /k {quoted}")
         {

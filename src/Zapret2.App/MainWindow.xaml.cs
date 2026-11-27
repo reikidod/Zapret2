@@ -25,15 +25,27 @@ public partial class MainWindow : Window
     private bool _refreshingPath;
     private bool _searching;
     private bool _allowClose;
+    private string? _embeddedBundleRoot;
+    private string? _bundleInstallError;
 
     public MainWindow()
     {
         InitializeComponent();
         try { _logStore.StartSession("Запуск приложения"); } catch { }
+        try { _embeddedBundleRoot = EmbeddedRuntimeBundle.Install(); }
+        catch (Exception ex) { _bundleInstallError = ex.Message; }
         _store.Load();
         foreach (var profile in _store.Config.Profiles) _profiles.Add(profile);
         ProfilesList.ItemsSource = _profiles;
-        BasePath.Text = _store.Config.BaseDirectory;
+        var configuredBase = _store.Config.BaseDirectory;
+        if (string.IsNullOrWhiteSpace(configuredBase) || !Directory.Exists(configuredBase))
+            configuredBase = _embeddedBundleRoot ?? configuredBase;
+        BasePath.Text = configuredBase;
+        if (!string.Equals(_store.Config.BaseDirectory, configuredBase, StringComparison.OrdinalIgnoreCase))
+        {
+            _store.Config.BaseDirectory = configuredBase;
+            try { _store.Save(); } catch (Exception ex) { _bundleInstallError ??= ex.Message; }
+        }
         DebugCheck.IsChecked = _store.Config.DebugEnabled;
         UserListPicker.ItemsSource = ListCatalog.UserFiles.Keys.ToList();
         UserListPicker.SelectedIndex = 0;
@@ -52,7 +64,7 @@ public partial class MainWindow : Window
                 RunStatus.Text = requested ? "Остановлен пользователем" : $"Завершён (код {code?.ToString() ?? "неизвестен"})";
                 StartButton.Content = "▶   Запустить";
                 UpdateRuntimeState();
-                AppendLog(requested ? "winws2 остановлен." : $"winws2 завершился с кодом {code?.ToString() ?? "?"}.");
+                AppendLog(requested ? "DPI-движок остановлен." : $"DPI-движок завершился с кодом {code?.ToString() ?? "?"}.");
             }));
         };
 
@@ -69,7 +81,9 @@ public partial class MainWindow : Window
             _runner.Dispose();
             _listUpdater.Dispose();
         };
-        AppendLog("Zapret2 Control Center запущен. Настройки профилей сохранены отдельно от EXE.");
+        AppendLog("Zapret2 Control Center запущен. Профили и настройки хранятся отдельно от EXE.");
+        if (_embeddedBundleRoot is not null) AppendLog("Встроенный комплект winws/winws2 и blockcheck установлен: " + _embeddedBundleRoot);
+        else if (_bundleInstallError is not null) AppendLog("Не удалось подготовить встроенный комплект: " + _bundleInstallError);
     }
 
     private void SetPage(string page)
@@ -150,19 +164,41 @@ public partial class MainWindow : Window
         static string FilterValue(string value) => value == "12" ? "12 (отключено)" : value;
         var lines = new[]
         {
+            Mark(_components.Winws, "winws.exe"),
             Mark(_components.Winws2, "winws2.exe"),
             Mark(_components.LuaDirectory, "Каталог Lua"),
-            Mark(_components.Blockcheck, "blockcheck2.cmd"),
+            Mark(_components.Blockcheck, "blockcheck.cmd"),
+            Mark(_components.Blockcheck2, "blockcheck2.cmd"),
             listStatus,
             $"Игровые фильтры: TCP {FilterValue(gameFilters.Tcp)} · UDP {FilterValue(gameFilters.Udp)}"
         };
         ComponentsStatus.Text = string.Join(Environment.NewLine, lines);
-        WinwsStatusText.Text = _components.Winws2 is null ? "Не найден" : "Найден";
+        WinwsStatusText.Text = _components.Winws is not null && _components.Winws2 is not null ? "Оба движка найдены" :
+            _components.Winws2 is not null ? "Найден только winws2" : _components.Winws is not null ? "Найден только winws" : "Не найдены";
         LuaStatusText.Text = _components.LuaDirectory is null ? "Не найдены" : "Найдены";
-        BlockcheckStatusText.Text = _components.Blockcheck is null ? "Не найден" : "Найден";
-        WinwsStatusText.Foreground = _components.Winws2 is null ? (Brush)FindResource("WarningBrush") : (Brush)FindResource("SuccessBrush");
+        BlockcheckStatusText.Text = _components.Blockcheck is not null && _components.Blockcheck2 is not null ? "Оба теста найдены" :
+            _components.Blockcheck2 is not null ? "Найден только blockcheck2" : _components.Blockcheck is not null ? "Найден только blockcheck" : "Не найдены";
+        WinwsStatusText.Foreground = _components.Winws is not null && _components.Winws2 is not null ? (Brush)FindResource("SuccessBrush") : (Brush)FindResource("WarningBrush");
         LuaStatusText.Foreground = _components.LuaDirectory is null ? (Brush)FindResource("WarningBrush") : (Brush)FindResource("SuccessBrush");
-        BlockcheckStatusText.Foreground = _components.Blockcheck is null ? (Brush)FindResource("WarningBrush") : (Brush)FindResource("SuccessBrush");
+        BlockcheckStatusText.Foreground = _components.Blockcheck is not null && _components.Blockcheck2 is not null ? (Brush)FindResource("SuccessBrush") : (Brush)FindResource("WarningBrush");
+        UpdateEngineButtons();
+    }
+
+    private string SelectedEngine =>
+        (EnginePicker.SelectedItem as ComboBoxItem)?.Tag?.ToString() is { Length: > 0 } engine
+            ? engine : _current?.Engine ?? "winws2";
+
+    private void UpdateEngineButtons()
+    {
+        if (BlockcheckButton is not null)
+            BlockcheckButton.Content = SelectedEngine == "winws" ? "Проверка: blockcheck" : "Проверка: blockcheck2";
+    }
+
+    private void EnginePicker_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading) return;
+        CommitEditor();
+        UpdateEngineButtons();
     }
 
     private void RefreshDiagnostics()
@@ -193,7 +229,7 @@ public partial class MainWindow : Window
     private void UpdateRuntimeState()
     {
         var running = _runner.IsRunning;
-        SidebarStatusText.Text = running ? "winws2 работает" : "Не запущен";
+        SidebarStatusText.Text = running ? "DPI-движок работает" : "Не запущен";
         SidebarStatusDot.Fill = running ? (Brush)FindResource("SuccessBrush") : (Brush)FindResource("WarningBrush");
         if (running)
         {
@@ -236,12 +272,12 @@ public partial class MainWindow : Window
         try
         {
             RunStatus.Text = "Поиск компонентов…";
-            AppendLog("Начат поиск winws2.exe на доступных дисках. Поиск ограничен по времени.");
+            AppendLog("Начат поиск winws.exe и winws2.exe на доступных дисках. Поиск ограничен по времени.");
             var found = await Task.Run(() => WinwsFinder.Find(timeBudgetSeconds: 18));
             if (found.Count == 0)
             {
-                AppendLog("winws2.exe не найден. Укажите папку zapret-win-bundle вручную.");
-                MessageBox.Show("Не удалось найти winws2.exe. Выберите папку bundle вручную.", "Поиск компонентов", MessageBoxButton.OK, MessageBoxImage.Information);
+                AppendLog("winws.exe / winws2.exe не найдены. Укажите папку комплекта вручную.");
+                MessageBox.Show("Не удалось найти winws.exe или winws2.exe. Выберите папку bundle вручную.", "Поиск компонентов", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
             var best = found[0];
@@ -252,7 +288,7 @@ public partial class MainWindow : Window
             _store.Config.BaseDirectory = baseDir;
             _store.Save();
             RefreshComponents();
-            AppendLog($"Найден winws2.exe: {best}");
+            AppendLog($"Найден движок: {best}");
             foreach (var other in found.Skip(1).Take(5)) AppendLog("Дополнительная копия: " + other);
             if (found.Count > 1) AppendLog($"Всего найдено копий: {found.Count}. Выбрана первая по приоритету.");
         }
@@ -267,6 +303,8 @@ public partial class MainWindow : Window
     private static string ResolveBase(string exe)
     {
         var dir = new DirectoryInfo(Path.GetDirectoryName(exe)!);
+        if (dir.Name.Equals("zapret-winws", StringComparison.OrdinalIgnoreCase) && dir.Parent is not null)
+            return dir.Parent.FullName;
         if (dir.Parent?.Name.Equals("zapret-winws", StringComparison.OrdinalIgnoreCase) == true && dir.Parent.Parent is not null)
             return dir.Parent.Parent.FullName;
         return dir.FullName;
@@ -281,7 +319,9 @@ public partial class MainWindow : Window
         ProfileName.Text = selected.Name;
         ArgumentsEditor.Text = selected.Args;
         ProfileNote.Text = selected.Note;
+        EnginePicker.SelectedIndex = selected.Engine.Equals("winws", StringComparison.OrdinalIgnoreCase) ? 0 : 1;
         _loading = false;
+        UpdateEngineButtons();
         _store.Config.ActiveProfile = selected.Name;
         try { _store.Save(); }
         catch (Exception ex) { AppendLog("Не удалось сохранить выбранный профиль: " + ex.Message); }
@@ -299,6 +339,7 @@ public partial class MainWindow : Window
         var desired = string.IsNullOrWhiteSpace(ProfileName.Text) ? _current.Name : ProfileName.Text.Trim();
         _current.Name = _store.UniqueName(desired, _current);
         _current.Args = ArgumentsEditor.Text;
+        _current.Engine = SelectedEngine;
         _store.Config.ActiveProfile = _current.Name;
         _store.Config.Profiles = _profiles.ToList();
         _store.Save();
@@ -342,7 +383,8 @@ public partial class MainWindow : Window
             {
                 Name = _store.UniqueName(_current.Name + " — копия"),
                 Args = _current.Args,
-                Note = _current.Note
+                Note = _current.Note,
+                Engine = _current.Engine
             };
             _profiles.Add(profile);
             _store.Config.Profiles = _profiles.ToList();
@@ -423,20 +465,21 @@ public partial class MainWindow : Window
         catch (Exception ex) { MessageBox.Show(ex.Message, "Импорт профилей", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 
-    private async void ImportFlowseal_Click(object sender, RoutedEventArgs e)
+    private void ImportFlowseal_Click(object sender, RoutedEventArgs e)
     {
         if (MessageBox.Show(
-            "Будут загружены 22 текстовых BAT-файла из закреплённого commit Flowseal. Приложение извлечёт только аргументы winws2 и не будет запускать BAT/CMD. Продолжить?",
+            "Будут импортированы 22 BAT-файла Flowseal из встроенного комплекта. Приложение извлечёт только аргументы winws2 и не будет запускать BAT/CMD. Интернет не требуется. Продолжить?",
             "Импорт классических профилей Flowseal", MessageBoxButton.YesNo, MessageBoxImage.Information) != MessageBoxResult.Yes)
             return;
 
         CommitEditor();
         ImportFlowsealButton.IsEnabled = false;
-        ImportFlowsealButton.Content = "Загрузка стратегий Flowseal…";
+        ImportFlowsealButton.Content = "Импорт стратегий Flowseal…";
         try
         {
-            AppendLog($"Загрузка 22 классических стратегий Flowseal (commit {FlowsealClassicImporter.SourceCommit})…");
-            var downloaded = await FlowsealClassicImporter.DownloadAsync();
+            AppendLog($"Импорт 22 встроенных стратегий Flowseal (commit {FlowsealClassicImporter.SourceCommit})…");
+            var strategyDirectory = Path.Combine(GetResolvedBundleRoot(), "flowseal-strategies");
+            var downloaded = FlowsealClassicImporter.ImportDirectory(strategyDirectory);
 
             if (!string.IsNullOrWhiteSpace(_components.ListsDirectory) && Directory.Exists(_components.ListsDirectory))
             {
@@ -483,12 +526,12 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             AppendLog("Ошибка импорта Flowseal: " + ex.Message);
-            MessageBox.Show(ex.Message, "Не удалось загрузить стратегии Flowseal", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(ex.Message, "Не удалось импортировать стратегии Flowseal", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
             ImportFlowsealButton.IsEnabled = true;
-            ImportFlowsealButton.Content = "Загрузить все классические стратегии Flowseal (22)";
+            ImportFlowsealButton.Content = "Импортировать 22 стратегии Flowseal (офлайн)";
         }
     }
 
@@ -566,7 +609,10 @@ public partial class MainWindow : Window
                 if (ask == MessageBoxResult.Yes && WindowsIntegration.RelaunchAsAdministrator()) Close();
                 return;
             }
-            if (_components.Winws2 is null) throw new InvalidOperationException("Не найден winws2.exe. Укажите папку zapret-win-bundle.");
+            var engine = SelectedEngine;
+            var executable = engine == "winws" ? _components.Winws : _components.Winws2;
+            if (executable is null) throw new InvalidOperationException(engine == "winws"
+                ? "Не найден winws.exe в выбранном комплекте." : "Не найден winws2.exe в выбранном комплекте.");
 
             var otherInstances = WindowsIntegration.GetRunningDpiProcesses();
             if (otherInstances.Count > 0)
@@ -582,7 +628,7 @@ public partial class MainWindow : Window
                 var createdLists = ListUpdateService.EnsureUserLists(GetResolvedBundleRoot());
                 foreach (var name in createdLists) AppendLog("Создан пользовательский список: " + name);
             }
-            var preflightErrors = LaunchPreflight.Validate(profileTemplate, _components);
+            var preflightErrors = LaunchPreflight.Validate(profileTemplate, _components, engine);
             if (preflightErrors.Count > 0)
                 throw new InvalidOperationException("Проверка перед запуском не пройдена:" +
                     Environment.NewLine + "• " + string.Join(Environment.NewLine + "• ", preflightErrors));
@@ -602,11 +648,11 @@ public partial class MainWindow : Window
 
             var args = ArgumentParser.Render(profileTemplate, _components);
             if (DebugCheck.IsChecked == true && !args.Contains("--debug", StringComparer.Ordinal)) args.Insert(0, "--debug");
-            try { _logStore.StartSession($"winws2 — {_current?.Name ?? "без профиля"}"); } catch { }
-            _runner.Start(_components.Winws2, args);
+            try { _logStore.StartSession($"{engine} — {_current?.Name ?? "без профиля"}"); } catch { }
+            _runner.Start(executable, args);
             RunStatus.Text = "Запускается…";
             StartButton.Content = "■   Остановить";
-            AppendLog("Запуск winws2: " + _components.Winws2);
+            AppendLog($"Запуск {Path.GetFileName(executable)}: {executable}");
             AppendLog($"Профиль: {_current?.Name ?? "не выбран"}; аргументов: {args.Count}.");
             UpdateRuntimeState();
         }
@@ -627,18 +673,21 @@ public partial class MainWindow : Window
     private async void Blockcheck_Click(object sender, RoutedEventArgs e)
     {
         RefreshComponents();
-        if (_components.Blockcheck is null)
+        var engine = SelectedEngine;
+        var script = engine == "winws" ? _components.Blockcheck : _components.Blockcheck2;
+        var scriptName = engine == "winws" ? "blockcheck.cmd" : "blockcheck2.cmd";
+        if (script is null)
         {
-            MessageBox.Show("Не найден blockcheck2.cmd в выбранной папке.", "Диагностика", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show($"Не найден {scriptName} во встроенном комплекте.", "Диагностика", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         if (_runner.IsRunning)
         {
-            if (MessageBox.Show("Для корректного теста нужно остановить winws2. Остановить и продолжить?", "blockcheck2", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+            if (MessageBox.Show($"Для корректного теста нужно остановить {engine}. Остановить и продолжить?", scriptName, MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
             await _runner.StopAsync();
             if (_runner.IsRunning)
             {
-                MessageBox.Show("Не удалось подтвердить остановку winws2. blockcheck2 не будет запущен.",
+                MessageBox.Show($"Не удалось подтвердить остановку {engine}. {scriptName} не будет запущен.",
                     "Остановка не подтверждена", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
@@ -652,15 +701,15 @@ public partial class MainWindow : Window
         }
         try
         {
-            WindowsIntegration.LaunchBlockcheck(_components.Blockcheck);
-            AppendLog("blockcheck2 запущен в отдельной консоли. Следуйте инструкциям в её окне.");
+            WindowsIntegration.LaunchBlockcheck(script);
+            AppendLog($"{scriptName} запущен в отдельной консоли. Следуйте инструкциям в её окне.");
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, "Ошибка запуска blockcheck2", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 
     private void Admin_Click(object sender, RoutedEventArgs e)
     {
-        if (_runner.IsRunning) { MessageBox.Show("Сначала остановите winws2."); return; }
+        if (_runner.IsRunning) { MessageBox.Show("Сначала остановите DPI-движок."); return; }
         if (WindowsIntegration.RelaunchAsAdministrator()) Close();
         else MessageBox.Show("Запрос UAC отменён или не выполнен.", "Права администратора", MessageBoxButton.OK, MessageBoxImage.Warning);
     }

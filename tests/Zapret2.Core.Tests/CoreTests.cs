@@ -1,4 +1,5 @@
 using System.Net;
+using System.IO.Compression;
 using System.Text;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -232,7 +233,7 @@ public sealed class CoreTests
 
             Assert.EndsWith("WINWS2.EXE", components.Winws2);
             Assert.EndsWith("lua", components.LuaDirectory);
-            Assert.EndsWith("blockcheck2.cmd", components.Blockcheck);
+            Assert.EndsWith("blockcheck2.cmd", components.Blockcheck2);
         }
         finally { try { Directory.Delete(dir, true); } catch { } }
     }
@@ -379,6 +380,12 @@ public sealed class CoreTests
         Assert.False(runner.IsRunning);
     }
 
+    private static void CreateRuntimeDependencies(string directory)
+    {
+        foreach (var name in new[] { "WinDivert.dll", "WinDivert64.sys", "cygwin1.dll" })
+            File.WriteAllText(Path.Combine(directory, name), "test runtime");
+    }
+
     [Fact]
     public void LaunchPreflightFindsMissingReferencedLuaFiles()
     {
@@ -389,6 +396,7 @@ public sealed class CoreTests
             Directory.CreateDirectory(lua);
             var exe = Path.Combine(dir, "winws2.exe");
             File.WriteAllText(exe, "test executable placeholder");
+            CreateRuntimeDependencies(dir);
             File.WriteAllText(Path.Combine(lua, "zapret-lib.lua"), "-- test");
 
             var components = new Components { Winws2 = exe, LuaDirectory = lua };
@@ -411,6 +419,7 @@ public sealed class CoreTests
             Directory.CreateDirectory(dir);
             var exe = Path.Combine(dir, "winws2.exe");
             File.WriteAllText(exe, "test executable placeholder");
+            CreateRuntimeDependencies(dir);
 
             var errors = LaunchPreflight.Validate("--wf-tcp-out=80,443",
                 new Components { Winws2 = exe });
@@ -770,6 +779,7 @@ start "zapret" /min "%BIN%winws2.exe" --debug=0 --wf-tcp-out=80,443,%GameFilterT
         {
             var exe = Path.Combine(binary, "winws2.exe");
             File.WriteAllText(exe, "test");
+            CreateRuntimeDependencies(binary);
             File.WriteAllText(Path.Combine(lua, "zapret-lib.lua"), "-- test");
             File.WriteAllText(Path.Combine(lists, "list-general.txt"), "example.com\n");
             var components = new Components { Winws2 = exe, LuaDirectory = lua };
@@ -846,5 +856,100 @@ start "zapret" /min "%BIN%winws2.exe" --debug=0 --wf-tcp-out=80,443,%GameFilterT
         Assert.Contains("ipset-exclude.txt", impact.ExcludedIpSets);
         Assert.Contains("Доменные исключения", text, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void ComponentDiscoveryFindsBothEnginesAndBothBlockcheckScripts()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "Zapret2Tests", Guid.NewGuid().ToString("N"));
+        var bin = Path.Combine(root, "zapret-winws");
+        var lua = Path.Combine(bin, "lua");
+        var checks = Path.Combine(root, "blockcheck");
+        Directory.CreateDirectory(lua);
+        Directory.CreateDirectory(checks);
+        try
+        {
+            foreach (var name in new[] { "winws.exe", "winws2.exe", "WinDivert.dll", "WinDivert64.sys", "cygwin1.dll" })
+                File.WriteAllText(Path.Combine(bin, name), "");
+            File.WriteAllText(Path.Combine(lua, "zapret-lib.lua"), "");
+            File.WriteAllText(Path.Combine(checks, "blockcheck.cmd"), "");
+            File.WriteAllText(Path.Combine(checks, "blockcheck2.cmd"), "");
+            var found = ComponentDiscovery.Find(root);
+            Assert.NotNull(found.Winws);
+            Assert.NotNull(found.Winws2);
+            Assert.NotNull(found.Blockcheck);
+            Assert.NotNull(found.Blockcheck2);
+            Assert.Equal(bin, found.BinaryDirectory);
+        }
+        finally { try { Directory.Delete(root, true); } catch { } }
+    }
+
+    [Fact]
+    public void LaunchPreflightValidatesTheSelectedEngineAndItsRuntimeFiles()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "Zapret2Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var classic = Path.Combine(root, "winws.exe");
+            var next = Path.Combine(root, "winws2.exe");
+            File.WriteAllText(classic, "");
+            File.WriteAllText(next, "");
+            CreateRuntimeDependencies(root);
+            var components = new Components { Winws = classic, Winws2 = next };
+            Assert.Empty(LaunchPreflight.Validate("", components, "winws"));
+            Assert.Empty(LaunchPreflight.Validate("", components, "winws2"));
+            File.Delete(Path.Combine(root, "WinDivert64.sys"));
+            Assert.Contains(LaunchPreflight.Validate("", components, "winws"), e => e.Contains("WinDivert64.sys", StringComparison.Ordinal));
+        }
+        finally { try { Directory.Delete(root, true); } catch { } }
+    }
+
+    [Fact]
+    public void BundleInstallerExtractsRequiredFilesAndRejectsPathTraversal()
+    {
+        static MemoryStream MakeArchive(bool traversal)
+        {
+            var stream = new MemoryStream();
+            using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
+            {
+                var paths = new[]
+                {
+                    "zapret-winws/winws.exe", "zapret-winws/winws2.exe",
+                    "zapret-winws/WinDivert.dll", "zapret-winws/WinDivert64.sys",
+                    "zapret-winws/cygwin1.dll", "zapret-winws/lua/zapret-lib.lua",
+                    "blockcheck/blockcheck.cmd", "blockcheck/blockcheck2.cmd",
+                    "cygwin/bin/bash.exe", "cygwin/bin/cygpath.exe"
+                };
+                foreach (var path in paths)
+                {
+                    using var writer = new StreamWriter(archive.CreateEntry(path).Open());
+                    writer.Write("test");
+                }
+                if (traversal)
+                {
+                    using var writer = new StreamWriter(archive.CreateEntry("../escape.txt").Open());
+                    writer.Write("bad");
+                }
+            }
+            stream.Position = 0;
+            return stream;
+        }
+
+        var root = Path.Combine(Path.GetTempPath(), "Zapret2Tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            using var archive = MakeArchive(false);
+            var installed = BundleInstaller.Install(archive, root, "test-version");
+            Assert.True(File.Exists(Path.Combine(installed, "zapret-winws", "winws.exe")));
+            Assert.True(File.Exists(Path.Combine(installed, "blockcheck", "blockcheck2.cmd")));
+            using var second = MakeArchive(false);
+            Assert.Equal(installed, BundleInstaller.Install(second, root, "test-version"));
+            using var malicious = MakeArchive(true);
+            Assert.Throws<InvalidDataException>(() => BundleInstaller.Install(malicious, root, "bad-version"));
+            Assert.False(File.Exists(Path.Combine(root, "escape.txt")));
+        }
+        finally { try { Directory.Delete(root, true); } catch { } }
+    }
+
 
 }
