@@ -37,6 +37,7 @@
                 <StackPanel Grid.Row="3">
                     <Button x:Name="NavOverview" Tag="overview" Style="{StaticResource NavButtonStyle}" Content="◫   Обзор" Click="Navigate_Click" Background="#263A56" BorderBrush="#354F72"/>
                     <Button x:Name="NavProfiles" Tag="profiles" Style="{StaticResource NavButtonStyle}" Content="▤   Профили" Click="Navigate_Click"/>
+                    <Button x:Name="NavLists" Tag="lists" Style="{StaticResource NavButtonStyle}" Content="☷   Списки" Click="Navigate_Click"/>
                     <Button x:Name="NavDiagnostics" Tag="diagnostics" Style="{StaticResource NavButtonStyle}" Content="⌁   Диагностика" Click="Navigate_Click"/>
                     <Button x:Name="NavSettings" Tag="settings" Style="{StaticResource NavButtonStyle}" Content="⚙   Настройки" Click="Navigate_Click"/>
                 </StackPanel>
@@ -223,6 +224,38 @@
                     </Grid>
                 </Border>
             </Grid>
+
+            <!-- Lists -->
+            <ScrollViewer x:Name="ListsPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <TextBlock Text="Сетевые списки" FontSize="18" FontWeight="SemiBold"/>
+                    <TextBlock Text="Обновляйте общие списки Flowseal отдельно от собственных правил. Перед заменой общих файлов создаётся резервная копия." FontSize="12" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,18"/>
+                    <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="18" Margin="0,0,0,14">
+                        <StackPanel>
+                            <TextBlock Text="Общие списки" FontSize="14" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="ListsDirectoryText" Text="Папка списков не определена" FontSize="11" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,10"/>
+                            <TextBlock x:Name="ListsStatusText" Text="Выберите папку zapret2 bundle в настройках." FontSize="12" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                            <WrapPanel>
+                                <Button x:Name="UpdateListsButton" Content="Обновить общие списки" Click="UpdateLists_Click" Style="{StaticResource AccentButtonStyle}"/>
+                                <Button Content="Проверить файлы" Click="RefreshLists_Click"/>
+                                <Button Content="Открыть папку lists" Click="OpenListsFolder_Click"/>
+                            </WrapPanel>
+                            <TextBlock Text="Источники: Flowseal/zapret-discord-youtube. Загружаются только текстовые списки; исполняемые файлы и драйверы не затрагиваются." FontSize="10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="18">
+                        <StackPanel>
+                            <TextBlock Text="Пользовательские списки" FontSize="14" FontWeight="SemiBold"/>
+                            <TextBlock Text="Эти файлы не перезаписываются при обновлении общих списков. Открывайте их в Блокноте, чтобы добавлять собственные домены или IP-исключения." FontSize="11" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,10"/>
+                            <ComboBox x:Name="UserListPicker" MinWidth="260" HorizontalAlignment="Left" Margin="0,0,0,10"/>
+                            <WrapPanel>
+                                <Button Content="Открыть в Блокноте" Click="OpenUserList_Click"/>
+                                <Button Content="Создать отсутствующие файлы" Click="EnsureUserLists_Click"/>
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
 
             <!-- Settings -->
             <ScrollViewer x:Name="SettingsPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
