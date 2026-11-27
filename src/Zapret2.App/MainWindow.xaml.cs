@@ -16,6 +16,7 @@ public partial class MainWindow : Window
     private readonly ProfileStore _store = new();
     private readonly WinwsRunner _runner = new();
     private readonly ListUpdateService _listUpdater = new();
+    private readonly DiagnosticLogStore _logStore = new();
     private readonly ObservableCollection<Profile> _profiles = [];
     private readonly DispatcherTimer _statusTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private Components _components = new();
@@ -28,6 +29,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        try { _logStore.StartSession("Запуск приложения"); } catch { }
         _store.Load();
         foreach (var profile in _store.Config.Profiles) _profiles.Add(profile);
         ProfilesList.ItemsSource = _profiles;
@@ -507,6 +509,7 @@ public partial class MainWindow : Window
 
             var args = ArgumentParser.Render(profileTemplate, _components);
             if (DebugCheck.IsChecked == true && !args.Contains("--debug", StringComparer.Ordinal)) args.Insert(0, "--debug");
+            try { _logStore.StartSession($"winws2 — {_current?.Name ?? "без профиля"}"); } catch { }
             _runner.Start(_components.Winws2, args);
             RunStatus.Text = "Запускается…";
             StartButton.Content = "■   Остановить";
@@ -738,6 +741,18 @@ public partial class MainWindow : Window
         catch (Exception ex) { MessageBox.Show(ex.Message, "Папка настроек", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 
+    private void OpenLogsFolder_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Directory.CreateDirectory(_logStore.DirectoryPath);
+            var startInfo = new ProcessStartInfo("explorer.exe") { UseShellExecute = true };
+            startInfo.ArgumentList.Add(_logStore.DirectoryPath);
+            Process.Start(startInfo);
+        }
+        catch (Exception ex) { MessageBox.Show(ex.Message, "Папка журналов", MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
     private void SaveLog_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new SaveFileDialog { Filter = "Текстовый файл (*.txt)|*.txt", FileName = $"zapret2-log-{DateTime.Now:yyyyMMdd-HHmmss}.txt" };
@@ -778,6 +793,7 @@ public partial class MainWindow : Window
             Dispatcher.BeginInvoke(new Action(() => AppendLog(line)));
             return;
         }
+        try { _logStore.Append(line); } catch { /* UI logging must continue if disk logging is unavailable. */ }
         LogBox.AppendText($"[{DateTime.Now:HH:mm:ss}] {line}{Environment.NewLine}");
         var lines = LogBox.LineCount;
         if (lines > 1500)
