@@ -1,3 +1,5 @@
+using System.Net;
+using System.Text;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using Xunit;
@@ -432,6 +434,115 @@ public sealed class CoreTests
     public void TrafficScopeAnalyzerDoesNotWarnForProfilesWithoutPortFilters()
     {
         Assert.Empty(TrafficScopeAnalyzer.GetWarnings("--debug"));
+    }
+
+    [Fact]
+    public async Task ListUpdaterBacksUpManagedFilesAndPreservesUserLists()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "Zapret2Tests", Guid.NewGuid().ToString("N"));
+        var lists = Path.Combine(root, "lists");
+        Directory.CreateDirectory(lists);
+        try
+        {
+            File.WriteAllText(Path.Combine(lists, "list-general.txt"), "old.shared.example\n");
+            File.WriteAllText(Path.Combine(lists, "list-general-user.txt"), "my.private.example\n");
+
+            var handler = new StaticListHandler(name => name switch
+            {
+                "ipset-all.txt" => "1.1.1.0/24\n",
+                "ipset-exclude.txt" => "10.0.0.0/8\n",
+                "list-general.txt" => "new.shared.example\n",
+                "list-google.txt" => "youtube.com\n",
+                "list-exclude.txt" => "steampowered.com\n",
+                _ => null
+            });
+            using var client = new HttpClient(handler);
+            using var updater = new ListUpdateService(client);
+
+            var result = await updater.UpdateAsync(root);
+
+            Assert.Equal(5, result.UpdatedFiles.Count);
+            Assert.Equal("new.shared.example\n", File.ReadAllText(Path.Combine(lists, "list-general.txt")));
+            Assert.Equal("my.private.example\n", File.ReadAllText(Path.Combine(lists, "list-general-user.txt")));
+            Assert.True(Directory.Exists(result.BackupDirectory));
+            Assert.Equal("old.shared.example\n",
+                File.ReadAllText(Path.Combine(result.BackupDirectory, "list-general.txt")));
+        }
+        finally { try { Directory.Delete(root, true); } catch { } }
+    }
+
+    [Fact]
+    public async Task ListUpdaterRejectsInvalidIpSetBeforeChangingLocalFiles()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "Zapret2Tests", Guid.NewGuid().ToString("N"));
+        var lists = Path.Combine(root, "lists");
+        Directory.CreateDirectory(lists);
+        try
+        {
+            var original = Path.Combine(lists, "list-general.txt");
+            File.WriteAllText(original, "keep-this.example\n");
+
+            var handler = new StaticListHandler(name => name == "ipset-all.txt"
+                ? "this-is-not-an-ip\n"
+                : name switch
+                {
+                    "ipset-exclude.txt" => "10.0.0.0/8\n",
+                    "list-general.txt" => "new.example\n",
+                    "list-google.txt" => "youtube.com\n",
+                    "list-exclude.txt" => "steampowered.com\n",
+                    _ => null
+                });
+            using var client = new HttpClient(handler);
+            using var updater = new ListUpdateService(client);
+
+            await Assert.ThrowsAsync<InvalidDataException>(() => updater.UpdateAsync(root));
+
+            Assert.Equal("keep-this.example\n", File.ReadAllText(original));
+            Assert.False(Directory.Exists(Path.Combine(lists, ".backups")));
+        }
+        finally { try { Directory.Delete(root, true); } catch { } }
+    }
+
+    [Fact]
+    public void SavingUserListCreatesBackupAndCannotOverwriteManagedList()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "Zapret2Tests", Guid.NewGuid().ToString("N"));
+        var lists = Path.Combine(root, "lists");
+        Directory.CreateDirectory(lists);
+        try
+        {
+            var userPath = Path.Combine(lists, "list-general-user.txt");
+            File.WriteAllText(userPath, "old.user.example\n");
+
+            ListUpdateService.SaveUserList(root, "list-general-user.txt", "new.user.example\n");
+
+            Assert.Equal("new.user.example\n", File.ReadAllText(userPath));
+            var backup = Directory.GetFiles(Path.Combine(lists, ".backups"), "list-general-user.txt", SearchOption.AllDirectories);
+            Assert.Single(backup);
+            Assert.Equal("old.user.example\n", File.ReadAllText(backup[0]));
+            Assert.Throws<ArgumentException>(() =>
+                ListUpdateService.SaveUserList(root, "list-general.txt", "should-not-write.example"));
+        }
+        finally { try { Directory.Delete(root, true); } catch { } }
+    }
+
+    private sealed class StaticListHandler(Func<string, string?> getContent) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var path = request.RequestUri?.AbsolutePath ?? "";
+            var name = path.EndsWith("/.service/ipset-service.txt", StringComparison.Ordinal)
+                ? "ipset-all.txt"
+                : Path.GetFileName(path);
+            var content = getContent(name);
+            if (content is null)
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(content, Encoding.UTF8, "text/plain")
+            });
+        }
     }
 
 }
