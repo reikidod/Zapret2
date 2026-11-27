@@ -377,4 +377,45 @@ public sealed class CoreTests
         Assert.False(runner.IsRunning);
     }
 
+    [Fact]
+    public void LaunchPreflightFindsMissingReferencedLuaFiles()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "Zapret2Tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var lua = Path.Combine(dir, "lua");
+            Directory.CreateDirectory(lua);
+            var exe = Path.Combine(dir, "winws2.exe");
+            File.WriteAllText(exe, "test executable placeholder");
+            File.WriteAllText(Path.Combine(lua, "zapret-lib.lua"), "-- test");
+
+            var components = new Components { Winws2 = exe, LuaDirectory = lua };
+            var errors = LaunchPreflight.Validate(
+                "--lua-init=@\"{LUA}\\zapret-lib.lua\" --lua-init=@\"{LUA}\\zapret-antidpi.lua\"",
+                components);
+
+            Assert.Single(errors);
+            Assert.Contains("zapret-antidpi.lua", errors[0], StringComparison.Ordinal);
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+
+    [Fact]
+    public void LaunchPreflightDoesNotRequireLuaWhenProfileDoesNotReferenceIt()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "Zapret2Tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(dir);
+            var exe = Path.Combine(dir, "winws2.exe");
+            File.WriteAllText(exe, "test executable placeholder");
+
+            var errors = LaunchPreflight.Validate("--wf-tcp-out=80,443",
+                new Components { Winws2 = exe });
+
+            Assert.Empty(errors);
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+
 }
