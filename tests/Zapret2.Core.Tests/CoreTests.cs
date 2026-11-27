@@ -670,4 +670,119 @@ start "zapret" /min "%BIN%winws2.exe" --debug=0 --wf-tcp-out=80,443,%GameFilterT
         finally { try { Directory.Delete(root, true); } catch { } }
     }
 
+    [Fact]
+    public void FlowsealClassicImporterExtractsArgumentsWithoutExecutingBatchCommands()
+    {
+        var script = """
+            @echo off
+            start "zapret" /min "%BIN%winws2.exe" --wf-tcp-out=80,%GameFilterTCP% ^
+            --wf-udp-out=443,%GameFilterUDP% ^
+            --lua-init=@"%LUA%zapret-lib.lua" ^
+            --hostlist="%LISTS%list-general.txt"
+            """;
+
+        var args = FlowsealClassicImporter.ExtractArguments(script, "fixture.bat");
+
+        Assert.Contains("{GAMEFILTERTCP}", args);
+        Assert.Contains("{GAMEFILTERUDP}", args);
+        Assert.Contains("{LUA}\\zapret-lib.lua", args);
+        Assert.Contains("{LISTS}\\list-general.txt", args);
+        Assert.DoesNotContain("%", args);
+    }
+
+    [Fact]
+    public void FlowsealClassicImporterRejectsShellOperatorsOutsideWinwsArguments()
+    {
+        var script = """
+            start "zapret" /min "%BIN%winws2.exe" --wf-tcp-out=80 ^
+            & del important.txt
+            """;
+
+        Assert.Throws<InvalidDataException>(() => FlowsealClassicImporter.ExtractArguments(script, "unsafe.bat"));
+    }
+
+    [Fact]
+    public void GameFilterSettingsReadsModesAndDefaultsToDisabledWhenFlagIsMissing()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "Zapret2Tests", Guid.NewGuid().ToString("N"));
+        var binary = Path.Combine(root, "zapret-winws");
+        var utils = Path.Combine(root, "utils");
+        Directory.CreateDirectory(binary);
+        Directory.CreateDirectory(utils);
+        try
+        {
+            var settings = Path.Combine(utils, "game_filter.enabled");
+            Assert.Equal(new GameFilterPorts("12", "12"), GameFilterSettings.Read(binary));
+
+            File.WriteAllText(settings, "mode=all\ntcp=2053,2083-2087\nudp=50000-50100\n");
+            Assert.Equal(new GameFilterPorts("2053,2083-2087", "50000-50100"), GameFilterSettings.Read(binary));
+
+            File.WriteAllText(settings, "udp\n");
+            Assert.Equal(new GameFilterPorts("12", "1024-65535"), GameFilterSettings.Read(binary));
+
+            File.WriteAllText(settings, "mode=all\ntcp=70000\nudp=50000-50100\n");
+            Assert.Equal(new GameFilterPorts("1024-65535", "50000-50100"), GameFilterSettings.Read(binary));
+        }
+        finally { try { Directory.Delete(root, true); } catch { } }
+    }
+
+    [Fact]
+    public void ArgumentParserResolvesFlowsealListsAndGameFilterPlaceholders()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "Zapret2Tests", Guid.NewGuid().ToString("N"));
+        var binary = Path.Combine(root, "zapret-winws");
+        var lua = Path.Combine(binary, "lua");
+        var lists = Path.Combine(root, "lists");
+        var utils = Path.Combine(root, "utils");
+        Directory.CreateDirectory(lua);
+        Directory.CreateDirectory(lists);
+        Directory.CreateDirectory(utils);
+        try
+        {
+            File.WriteAllText(Path.Combine(utils, "game_filter.enabled"), "mode=all\ntcp=1000-2000\nudp=3000-4000\n");
+            var components = new Components
+            {
+                Winws2 = Path.Combine(binary, "winws2.exe"),
+                LuaDirectory = lua
+            };
+
+            var args = ArgumentParser.Render(
+                "--wf-tcp-out=80,{GAMEFILTERTCP} --wf-udp-out=443,{GAMEFILTERUDP} --hostlist=\"{LISTS}\\list-general.txt\"",
+                components);
+
+            Assert.Equal("--wf-tcp-out=80,1000-2000", args[0]);
+            Assert.Equal("--wf-udp-out=443,3000-4000", args[1]);
+            Assert.Equal(Path.Combine(lists, "list-general.txt"), args[2]["--hostlist=".Length..]);
+        }
+        finally { try { Directory.Delete(root, true); } catch { } }
+    }
+
+    [Fact]
+    public void LaunchPreflightFindsMissingFlowsealUserLists()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "Zapret2Tests", Guid.NewGuid().ToString("N"));
+        var binary = Path.Combine(root, "zapret-winws");
+        var lua = Path.Combine(binary, "lua");
+        var lists = Path.Combine(root, "lists");
+        Directory.CreateDirectory(lua);
+        Directory.CreateDirectory(lists);
+        try
+        {
+            var exe = Path.Combine(binary, "winws2.exe");
+            File.WriteAllText(exe, "test");
+            File.WriteAllText(Path.Combine(lua, "zapret-lib.lua"), "-- test");
+            File.WriteAllText(Path.Combine(lists, "list-general.txt"), "example.com\n");
+            var components = new Components { Winws2 = exe, LuaDirectory = lua };
+            const string template = "--lua-init=@\"{LUA}\\zapret-lib.lua\" --hostlist=\"{LISTS}\\list-general.txt\" --hostlist=\"{LISTS}\\list-general-user.txt\"";
+
+            var errors = LaunchPreflight.Validate(template, components);
+            Assert.Single(errors);
+            Assert.Contains("list-general-user.txt", errors[0], StringComparison.Ordinal);
+
+            ListUpdateService.EnsureUserLists(root);
+            Assert.Empty(LaunchPreflight.Validate(template, components));
+        }
+        finally { try { Directory.Delete(root, true); } catch { } }
+    }
+
 }
