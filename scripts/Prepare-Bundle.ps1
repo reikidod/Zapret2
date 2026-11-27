@@ -64,12 +64,31 @@ try {
         Copy-Item -LiteralPath $source -Destination (Join-Path $StrategyDir $file) -Force
     }
 
+    $flowsealLicense = Join-Path $FlowsealRoot.FullName "LICENSE.txt"
+    if (Test-Path $flowsealLicense) { Copy-Item -LiteralPath $flowsealLicense -Destination (Join-Path $StrategyDir "LICENSE.txt") -Force }
+
     $sourceLists = Join-Path $FlowsealRoot.FullName "lists"
     if (Test-Path $sourceLists) {
         $targetLists = Join-Path $BundleRoot.FullName "lists"
         New-Item -ItemType Directory -Force -Path $targetLists | Out-Null
         Get-ChildItem -LiteralPath $sourceLists -File | Copy-Item -Destination $targetLists -Force
     }
+
+    $notices = @"
+Third-party runtime bundle sources
+
+Windows combined bundle: https://github.com/bol-van/zapret-win-bundle
+Pinned commit: $BundleCommit
+
+Zapret classic: https://github.com/bol-van/zapret
+Zapret2: https://github.com/bol-van/zapret2
+Flowseal profiles and lists: https://github.com/Flowseal/zapret-discord-youtube
+Pinned Flowseal commit: $FlowsealCommit
+
+The original upstream README and Flowseal LICENSE.txt are retained with the bundled files.
+Check the respective upstream projects for licensing, source code and update information.
+"@
+    Set-Content -LiteralPath (Join-Path $BundleRoot.FullName "THIRD-PARTY-NOTICES.txt") -Value $notices -Encoding UTF8
 
     $manifest = [ordered]@{
         bundle_repository = "bol-van/zapret-win-bundle"
@@ -89,12 +108,14 @@ try {
     $size = (Get-Item -LiteralPath $ResourceZip).Length
     if ($size -lt 1MB) { throw "The embedded runtime archive is unexpectedly small ($size bytes)." }
     $hash = (Get-FileHash -LiteralPath $ResourceZip -Algorithm SHA256).Hash.ToLowerInvariant()
-    @(
+    if ($env:GITHUB_STEP_SUMMARY) {
+        @(
         "Runtime bundle archive: $size bytes",
         "Runtime bundle SHA-256: $hash",
         "Zapret bundle commit: $BundleCommit",
         "Flowseal commit: $FlowsealCommit"
-    ) | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+        ) | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+    }
     Write-Host "Embedded runtime archive prepared: $ResourceZip ($size bytes)" -ForegroundColor Green
 }
 finally {

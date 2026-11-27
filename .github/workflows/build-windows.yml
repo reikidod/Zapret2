@@ -18,6 +18,7 @@ on:
       - "src/**"
       - "tests/**"
       - "assets/**"
+      - "scripts/**"
       - "Zapret2.sln"
       - "global.json"
       - "Directory.Build.props"
@@ -49,7 +50,7 @@ jobs:
 
       - name: Prepare embedded runtime bundle
         shell: pwsh
-        run: .\\scripts\\Prepare-Bundle.ps1
+        run: ./scripts/Prepare-Bundle.ps1
 
       - name: Restore
         run: dotnet restore Zapret2.sln

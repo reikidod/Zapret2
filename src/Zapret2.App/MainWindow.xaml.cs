@@ -196,7 +196,7 @@ public partial class MainWindow : Window
 
     private void EnginePicker_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_loading) return;
+        if (_loading || EnginePicker is null) return;
         CommitEditor();
         UpdateEngineButtons();
     }
@@ -696,7 +696,7 @@ public partial class MainWindow : Window
         if (others.Count > 0)
         {
             var details = string.Join(Environment.NewLine, others.Select(p => $"{p.Name} (PID {p.Id})"));
-            MessageBox.Show($"Для теста остановите другие DPI-процессы:\n{details}", "blockcheck2", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show($"Для теста остановите другие DPI-процессы:\n{details}", scriptName, MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         try
@@ -704,7 +704,7 @@ public partial class MainWindow : Window
             WindowsIntegration.LaunchBlockcheck(script);
             AppendLog($"{scriptName} запущен в отдельной консоли. Следуйте инструкциям в её окне.");
         }
-        catch (Exception ex) { MessageBox.Show(ex.Message, "Ошибка запуска blockcheck2", MessageBoxButton.OK, MessageBoxImage.Error); }
+        catch (Exception ex) { MessageBox.Show(ex.Message, "Ошибка запуска " + scriptName, MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 
     private void Admin_Click(object sender, RoutedEventArgs e)
