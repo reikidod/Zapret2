@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using Xunit;
 using Zapret2.Core;
 
@@ -327,6 +329,52 @@ public sealed class CoreTests
             Assert.Equal(completeExe, found[0]);
         }
         finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+
+    [Fact]
+    public async Task RunnerCapturesBothOutputStreamsAndExitCode()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+
+        using var runner = new WinwsRunner();
+        var output = new ConcurrentQueue<string>();
+        var exited = new TaskCompletionSource<(int? Code, bool Requested)>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        runner.OutputReceived += line => output.Enqueue(line);
+        runner.Exited += (code, requested) => exited.TrySetResult((code, requested));
+
+        var commandProcessor = Environment.GetEnvironmentVariable("ComSpec") ?? "cmd.exe";
+        runner.Start(commandProcessor,
+            ["/d", "/c", "echo zapret2-stdout & echo zapret2-stderr 1>&2"]);
+
+        var result = await exited.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal(0, result.Code);
+        Assert.False(result.Requested);
+        Assert.Contains(output, line => line.Contains("zapret2-stdout", StringComparison.Ordinal));
+        Assert.Contains(output, line => line.Contains("zapret2-stderr", StringComparison.Ordinal));
+        Assert.False(runner.IsRunning);
+    }
+
+    [Fact]
+    public async Task RunnerStopWaitsForProcessAndOutputPump()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+
+        using var runner = new WinwsRunner();
+        var exited = new TaskCompletionSource<(int? Code, bool Requested)>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        runner.Exited += (code, requested) => exited.TrySetResult((code, requested));
+
+        var commandProcessor = Environment.GetEnvironmentVariable("ComSpec") ?? "cmd.exe";
+        runner.Start(commandProcessor, ["/d", "/c", "ping -n 30 127.0.0.1 > nul"]);
+        await Task.Delay(300);
+
+        await runner.StopAsync();
+        var result = await exited.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.True(result.Requested);
+        Assert.False(runner.IsRunning);
     }
 
 }
