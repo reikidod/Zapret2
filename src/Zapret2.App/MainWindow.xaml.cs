@@ -513,7 +513,10 @@ public partial class MainWindow : Window
             var command = "\"" + _components.Winws2 + "\" " + string.Join(" ", args.Select(QuoteArg));
             Clipboard.SetText(command);
             AppendLog("Команда проверена и скопирована в буфер обмена. Она ещё не запускалась.");
-            MessageBox.Show(command, "Команда winws2 скопирована", MessageBoxButton.OK, MessageBoxImage.Information);
+            var impact = ProfileImpactAnalyzer.Analyze(ArgumentsEditor.Text).ToDisplayText();
+            MessageBox.Show(command + Environment.NewLine + Environment.NewLine +
+                "Область действия:" + Environment.NewLine + impact,
+                "Команда winws2 скопирована", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, "Профиль", MessageBoxButton.OK, MessageBoxImage.Warning); }
     }
@@ -582,11 +585,17 @@ public partial class MainWindow : Window
                     Environment.NewLine + "• " + string.Join(Environment.NewLine + "• ", preflightErrors));
 
             var scopeWarnings = TrafficScopeAnalyzer.GetWarnings(profileTemplate);
-            if (scopeWarnings.Count > 0 &&
-                MessageBox.Show(string.Join(Environment.NewLine + Environment.NewLine, scopeWarnings) +
-                    Environment.NewLine + Environment.NewLine + "Запустить этот профиль?",
-                    "Проверьте область действия профиля", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
-                return;
+            if (scopeWarnings.Count > 0)
+            {
+                var impact = ProfileImpactAnalyzer.Analyze(profileTemplate).ToDisplayText();
+                var prompt = "Что будет затронуто:" + Environment.NewLine + impact +
+                    Environment.NewLine + Environment.NewLine +
+                    string.Join(Environment.NewLine + Environment.NewLine, scopeWarnings) +
+                    Environment.NewLine + Environment.NewLine + "Запустить этот профиль?";
+                if (MessageBox.Show(prompt, "Проверьте область действия профиля",
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                    return;
+            }
 
             var args = ArgumentParser.Render(profileTemplate, _components);
             if (DebugCheck.IsChecked == true && !args.Contains("--debug", StringComparer.Ordinal)) args.Insert(0, "--debug");
