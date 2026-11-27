@@ -15,6 +15,7 @@ public partial class MainWindow : Window
 {
     private readonly ProfileStore _store = new();
     private readonly WinwsRunner _runner = new();
+    private readonly ListUpdateService _listUpdater = new();
     private readonly ObservableCollection<Profile> _profiles = [];
     private readonly DispatcherTimer _statusTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private Components _components = new();
@@ -32,6 +33,9 @@ public partial class MainWindow : Window
         ProfilesList.ItemsSource = _profiles;
         BasePath.Text = _store.Config.BaseDirectory;
         DebugCheck.IsChecked = _store.Config.DebugEnabled;
+        UserListPicker.ItemsSource = ListCatalog.UserFiles.Keys.ToList();
+        UserListPicker.SelectedIndex = 0;
+        RefreshListStatus();
 
         _runner.OutputReceived += line =>
         {
@@ -61,6 +65,7 @@ public partial class MainWindow : Window
         {
             _statusTimer.Stop();
             _runner.Dispose();
+            _listUpdater.Dispose();
         };
         AppendLog("Zapret2 Control Center запущен. Настройки профилей сохранены отдельно от EXE.");
     }
@@ -69,12 +74,14 @@ public partial class MainWindow : Window
     {
         OverviewPage.Visibility = page == "overview" ? Visibility.Visible : Visibility.Collapsed;
         ProfilesPage.Visibility = page == "profiles" ? Visibility.Visible : Visibility.Collapsed;
+        ListsPage.Visibility = page == "lists" ? Visibility.Visible : Visibility.Collapsed;
         DiagnosticsPage.Visibility = page == "diagnostics" ? Visibility.Visible : Visibility.Collapsed;
         SettingsPage.Visibility = page == "settings" ? Visibility.Visible : Visibility.Collapsed;
 
         PageTitle.Text = page switch
         {
             "profiles" => "Профили",
+            "lists" => "Списки",
             "diagnostics" => "Диагностика",
             "settings" => "Настройки",
             _ => "Обзор"
@@ -82,6 +89,7 @@ public partial class MainWindow : Window
         PageSubtitle.Text = page switch
         {
             "profiles" => "Настройка, импорт и управление параметрами winws2",
+            "lists" => "Обновление общих списков и сохранение собственных правил",
             "diagnostics" => "Состояние компонентов, конфликтующие процессы и журнал",
             "settings" => "Пути, режим запуска и резервное копирование профилей",
             _ => "Состояние компонентов и управление winws2"
@@ -92,7 +100,7 @@ public partial class MainWindow : Window
         var activeBorder = new SolidColorBrush(Color.FromRgb(53, 79, 114));
         foreach (var (button, key) in new[]
         {
-            (NavOverview, "overview"), (NavProfiles, "profiles"),
+            (NavOverview, "overview"), (NavProfiles, "profiles"), (NavLists, "lists"),
             (NavDiagnostics, "diagnostics"), (NavSettings, "settings")
         })
         {
@@ -102,6 +110,7 @@ public partial class MainWindow : Window
         }
 
         if (page == "diagnostics") RefreshDiagnostics();
+        if (page == "lists") RefreshListStatus();
     }
 
     private void Navigate_Click(object sender, RoutedEventArgs e)
@@ -194,6 +203,7 @@ public partial class MainWindow : Window
         try { _store.Save(); }
         catch (Exception ex) { AppendLog("Не удалось сохранить путь: " + ex.Message); }
         RefreshComponents();
+        RefreshListStatus();
     }
 
     private void Browse_Click(object sender, RoutedEventArgs e)
@@ -557,6 +567,150 @@ public partial class MainWindow : Window
         if (_runner.IsRunning) { MessageBox.Show("Сначала остановите winws2."); return; }
         if (WindowsIntegration.RelaunchAsAdministrator()) Close();
         else MessageBox.Show("Запрос UAC отменён или не выполнен.", "Права администратора", MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
+
+
+    private void RefreshListStatus()
+    {
+        if (string.IsNullOrWhiteSpace(BasePath.Text))
+        {
+            ListsDirectoryText.Text = "Сначала выберите папку zapret2 bundle в настройках.";
+            ListsStatusText.Text = "Путь к спискам неизвестен.";
+            return;
+        }
+
+        try
+        {
+            var directory = ListUpdateService.GetListsDirectory(BasePath.Text.Trim());
+            ListsDirectoryText.Text = directory;
+            if (!Directory.Exists(directory))
+            {
+                ListsStatusText.Text = "Папка lists не найдена. Выберите корень bundle, а не папку с winws2.exe.";
+                return;
+            }
+
+            var lines = new List<string>();
+            foreach (var item in ListCatalog.Managed)
+            {
+                var path = Path.Combine(directory, item.FileName);
+                if (!File.Exists(path))
+                {
+                    lines.Add($"○ {item.FileName} — отсутствует");
+                    continue;
+                }
+
+                var info = new FileInfo(path);
+                var count = File.ReadLines(path).Count(line =>
+                    !string.IsNullOrWhiteSpace(line) &&
+                    !line.TrimStart().StartsWith('#') &&
+                    !line.TrimStart().StartsWith(';'));
+                lines.Add($"● {item.FileName} — {count:N0} записей · {info.Length / 1024.0:N1} КБ");
+            }
+
+            var userCount = ListCatalog.UserFiles.Keys.Count(name => File.Exists(Path.Combine(directory, name)));
+            lines.Add($"Пользовательские файлы: {userCount}/{ListCatalog.UserFiles.Count}");
+            ListsStatusText.Text = string.Join(Environment.NewLine, lines);
+        }
+        catch (Exception ex)
+        {
+            ListsStatusText.Text = "Не удалось прочитать состояние списков: " + ex.Message;
+        }
+    }
+
+    private async void UpdateLists_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(BasePath.Text))
+        {
+            MessageBox.Show("Сначала выберите папку zapret2 bundle.", "Списки", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        UpdateListsButton.IsEnabled = false;
+        try
+        {
+            var created = ListUpdateService.EnsureUserLists(BasePath.Text.Trim());
+            foreach (var name in created) AppendLog("Создан пользовательский список: " + name);
+
+            AppendLog("Загрузка и проверка общих списков Flowseal…");
+            var result = await _listUpdater.UpdateAsync(BasePath.Text.Trim());
+            foreach (var item in result.UpdatedFiles)
+                AppendLog($"Обновлён {item.FileName}: {item.EntryCount:N0} записей, SHA-256 {item.Sha256}");
+
+            AppendLog("Резервные копии общих списков: " + result.BackupDirectory);
+            RefreshListStatus();
+            MessageBox.Show(
+                $"Обновлено файлов: {result.UpdatedFiles.Count}.{Environment.NewLine}" +
+                $"Резервные копии сохранены в:{Environment.NewLine}{result.BackupDirectory}{Environment.NewLine}{Environment.NewLine}" +
+                "Пользовательские файлы *-user.txt не изменялись.",
+                "Списки обновлены", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            AppendLog("Ошибка обновления списков: " + ex.Message);
+            MessageBox.Show(ex.Message, "Не удалось обновить списки", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            UpdateListsButton.IsEnabled = true;
+            RefreshListStatus();
+        }
+    }
+
+    private void RefreshLists_Click(object sender, RoutedEventArgs e)
+    {
+        RefreshListStatus();
+        AppendLog("Состояние файлов списков обновлено.");
+    }
+
+    private void EnsureUserLists_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(BasePath.Text))
+        {
+            MessageBox.Show("Сначала выберите папку zapret2 bundle.", "Списки", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        try
+        {
+            var created = ListUpdateService.EnsureUserLists(BasePath.Text.Trim());
+            foreach (var name in created) AppendLog("Создан пользовательский список: " + name);
+            RefreshListStatus();
+            MessageBox.Show(created.Count == 0
+                ? "Все пользовательские списки уже существуют. Их содержимое не менялось."
+                : "Созданы файлы:" + Environment.NewLine + string.Join(Environment.NewLine, created),
+                "Пользовательские списки", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Не удалось создать списки", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void OpenListsFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(BasePath.Text)) return;
+        try
+        {
+            var directory = ListUpdateService.GetListsDirectory(BasePath.Text.Trim());
+            if (!Directory.Exists(directory))
+                throw new DirectoryNotFoundException("Папка lists не найдена. Проверьте выбранный корень bundle.");
+            Process.Start(new ProcessStartInfo("explorer.exe", directory) { UseShellExecute = true });
+        }
+        catch (Exception ex) { MessageBox.Show(ex.Message, "Папка списков", MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
+    private void OpenUserList_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(BasePath.Text) || UserListPicker.SelectedItem is not string fileName) return;
+        try
+        {
+            ListUpdateService.EnsureUserLists(BasePath.Text.Trim());
+            var path = Path.Combine(ListUpdateService.GetListsDirectory(BasePath.Text.Trim()), fileName);
+            Process.Start(new ProcessStartInfo("notepad.exe") { ArgumentList = { path }, UseShellExecute = false });
+            AppendLog("Открыт пользовательский список: " + fileName);
+            RefreshListStatus();
+        }
+        catch (Exception ex) { MessageBox.Show(ex.Message, "Пользовательский список", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 
     private void DebugCheck_Changed(object sender, RoutedEventArgs e)
