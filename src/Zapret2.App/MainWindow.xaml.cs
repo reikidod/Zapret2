@@ -647,6 +647,13 @@ public partial class MainWindow : Window
     }
 
 
+    private string GetResolvedBundleRoot()
+    {
+        if (!string.IsNullOrWhiteSpace(_components.ListsDirectory))
+            return Directory.GetParent(_components.ListsDirectory)?.FullName ?? BasePath.Text.Trim();
+        return BasePath.Text.Trim();
+    }
+
     private void RefreshListStatus()
     {
         if (string.IsNullOrWhiteSpace(BasePath.Text))
@@ -658,7 +665,7 @@ public partial class MainWindow : Window
 
         try
         {
-            var directory = ListUpdateService.GetListsDirectory(BasePath.Text.Trim());
+            var directory = _components.ListsDirectory ?? ListUpdateService.GetListsDirectory(GetResolvedBundleRoot());
             ListsDirectoryText.Text = directory;
             if (!Directory.Exists(directory))
             {
@@ -711,11 +718,11 @@ public partial class MainWindow : Window
         UpdateListsButton.IsEnabled = false;
         try
         {
-            var created = ListUpdateService.EnsureUserLists(BasePath.Text.Trim());
+            var created = ListUpdateService.EnsureUserLists(GetResolvedBundleRoot());
             foreach (var name in created) AppendLog("Создан пользовательский список: " + name);
 
             AppendLog("Загрузка и проверка общих списков Flowseal…");
-            var result = await _listUpdater.UpdateAsync(BasePath.Text.Trim());
+            var result = await _listUpdater.UpdateAsync(GetResolvedBundleRoot());
             foreach (var item in result.UpdatedFiles)
                 AppendLog($"Обновлён {item.FileName}: {item.EntryCount:N0} записей, SHA-256 {item.Sha256}");
 
@@ -790,7 +797,7 @@ public partial class MainWindow : Window
         try
         {
             ListUpdateService.EnsureUserLists(BasePath.Text.Trim());
-            var path = Path.Combine(ListUpdateService.GetListsDirectory(BasePath.Text.Trim()), fileName);
+            var path = Path.Combine(_components.ListsDirectory ?? ListUpdateService.GetListsDirectory(GetResolvedBundleRoot()), fileName);
             Process.Start(new ProcessStartInfo("notepad.exe") { ArgumentList = { path }, UseShellExecute = false });
             AppendLog("Открыт пользовательский список: " + fileName);
             RefreshListStatus();
