@@ -57,6 +57,10 @@ public static class FlowsealClassicImporter
                 using var response = await httpClient.GetAsync(
                     url, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
+                var finalHost = response.RequestMessage?.RequestUri?.Host;
+                if (finalHost is not null &&
+                    !string.Equals(finalHost, "raw.githubusercontent.com", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException($"Flowseal script {file} redirected to an unexpected host.");
 
                 if (response.Content.Headers.ContentLength is long length && length > MaxScriptBytes)
                     throw new InvalidDataException($"Flowseal script {file} exceeds the allowed size.");
