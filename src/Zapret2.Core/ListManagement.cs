@@ -103,7 +103,7 @@ public sealed class ListUpdateService : IDisposable
         var path = Path.Combine(directory, fileName);
         if (File.Exists(path))
         {
-            var backupDirectory = Path.Combine(directory, ".backups", "user-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff"));
+            var backupDirectory = Path.Combine(directory, ".backups", "user-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff") + "-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(backupDirectory);
             File.Copy(path, Path.Combine(backupDirectory, fileName), overwrite: true);
         }
@@ -125,6 +125,8 @@ public sealed class ListUpdateService : IDisposable
             using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
                 .ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
+            if (!string.Equals(response.RequestMessage?.RequestUri?.Host, "raw.githubusercontent.com", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException($"Источник {definition.FileName} перенаправил запрос на неожиданный хост.");
 
             if (response.Content.Headers.ContentLength is long announced && announced > MaxListBytes)
                 throw new InvalidDataException($"Источник {definition.FileName} превысил лимит 2 МБ.");
@@ -139,6 +141,11 @@ public sealed class ListUpdateService : IDisposable
             {
                 throw new InvalidDataException($"Файл {definition.FileName} не является корректным UTF-8.", ex);
             }
+
+            var trimmed = text.TrimStart();
+            if (trimmed.StartsWith("<!doctype html", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("<html", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException($"Источник {definition.FileName} вернул HTML вместо списка.");
 
             text = NormalizeText(text);
             var entryCount = ValidateContent(definition, text);
@@ -192,7 +199,7 @@ public sealed class ListUpdateService : IDisposable
             }
 
             if (rollbackErrors.Count > 0)
-                throw new AggregateException("Обновление списков прервано; при откате возникли дополнительные ошибки.", [updateError, .. rollbackErrors]);
+                throw new AggregateException("Обновление списков прервано; при откате возникли дополнительные ошибки.", new[] { updateError }.Concat(rollbackErrors));
             throw new IOException("Обновление списков отменено. Предыдущие файлы восстановлены.", updateError);
         }
 
