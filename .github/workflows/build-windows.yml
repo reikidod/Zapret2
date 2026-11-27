@@ -8,6 +8,7 @@ on:
       - "src/**"
       - "tests/**"
       - "assets/**"
+      - "scripts/**"
       - "Zapret2.sln"
       - "global.json"
       - "Directory.Build.props"
@@ -46,6 +47,10 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Prepare embedded runtime bundle
+        shell: pwsh
+        run: .\\scripts\\Prepare-Bundle.ps1
+
       - name: Restore
         run: dotnet restore Zapret2.sln
 
@@ -81,8 +86,8 @@ jobs:
           Zapret2 Control Center — Windows x64 portable build
 
           Run Zapret2ControlCenter.exe. No separately installed .NET Runtime is required.
-          This is the GUI/controller only. It does not include winws2.exe, WinDivert,
-          drivers, or a zapret2 bundle. Select your separately installed bundle in Settings.
+          Includes winws.exe, winws2.exe, both blockcheck scripts, WinDivert, Cygwin,
+          Lua libraries, Flowseal profiles and baseline lists. No separate bundle download is required.
           User configuration is stored in %APPDATA%\Zapret2GUI and is not inside this EXE.
           '@ | Set-Content "publish/win-x64/README.txt" -Encoding UTF8
           @("Portable EXE: $size bytes", "SHA-256: $hash") | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append

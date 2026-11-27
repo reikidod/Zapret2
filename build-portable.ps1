@@ -2,6 +2,10 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $projectRoot
 
+Write-Host "Preparing embedded winws/winws2 and blockcheck runtime..." -ForegroundColor Cyan
+.\scripts\Prepare-Bundle.ps1
+if ($LASTEXITCODE -ne 0) { throw "Runtime bundle preparation failed." }
+
 Write-Host "Restoring solution..." -ForegroundColor Cyan
 dotnet restore .\Zapret2.sln
 if ($LASTEXITCODE -ne 0) { throw "dotnet restore failed." }
@@ -31,7 +35,7 @@ $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant()
 Zapret2 Control Center — Windows x64 portable build
 
 Run Zapret2ControlCenter.exe. No separately installed .NET Runtime is required.
-The GUI does not include winws2.exe, WinDivert, drivers, or a zapret2 bundle.
+The EXE includes winws.exe, winws2.exe, both blockcheck scripts, WinDivert, Cygwin, Lua, Flowseal profiles and baseline lists.
 User configuration is stored in %APPDATA%\Zapret2GUI and is not inside the EXE.
 '@ | Set-Content (Join-Path (Split-Path $exe) "README.txt") -Encoding UTF8
 Write-Host "Portable EXE created: $exe" -ForegroundColor Green
