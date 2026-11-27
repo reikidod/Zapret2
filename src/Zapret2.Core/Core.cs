@@ -348,7 +348,7 @@ public static class WinwsFinder
 public static class LaunchPreflight
 {
     private static readonly Regex LuaReference =
-        new(@"\\{LUA\\}[\\\\/]+([^\\s\""]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        new(@"\{LUA\}[\\/]+([^\s""]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public static IReadOnlyList<string> Validate(string profileTemplate, Components components)
     {
