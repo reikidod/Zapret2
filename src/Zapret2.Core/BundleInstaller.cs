@@ -17,7 +17,9 @@ public static class BundleInstaller
         Path.Combine("blockcheck", "blockcheck.cmd"),
         Path.Combine("blockcheck", "blockcheck2.cmd"),
         Path.Combine("cygwin", "bin", "bash.exe"),
-        Path.Combine("cygwin", "bin", "cygpath.exe")
+        Path.Combine("cygwin", "bin", "cygpath.exe"),
+        Path.Combine("cygwin", "bin", "cygwin1.dll"),
+        Path.Combine("tools", "elevator.exe")
     ];
 
     public static string Install(Stream archiveStream, string installRoot, string version)

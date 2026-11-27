@@ -918,7 +918,7 @@ start "zapret" /min "%BIN%winws2.exe" --debug=0 --wf-tcp-out=80,443,%GameFilterT
                     "zapret-winws/WinDivert.dll", "zapret-winws/WinDivert64.sys",
                     "zapret-winws/cygwin1.dll", "zapret-winws/lua/zapret-lib.lua",
                     "blockcheck/blockcheck.cmd", "blockcheck/blockcheck2.cmd",
-                    "cygwin/bin/bash.exe", "cygwin/bin/cygpath.exe"
+                    "cygwin/bin/bash.exe", "cygwin/bin/cygpath.exe", "cygwin/bin/cygwin1.dll", "tools/elevator.exe"
                 };
                 foreach (var path in paths)
                 {

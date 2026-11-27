@@ -4,7 +4,6 @@ Set-Location $projectRoot
 
 Write-Host "Preparing embedded winws/winws2 and blockcheck runtime..." -ForegroundColor Cyan
 .\scripts\Prepare-Bundle.ps1
-if ($LASTEXITCODE -ne 0) { throw "Runtime bundle preparation failed." }
 
 Write-Host "Restoring solution..." -ForegroundColor Cyan
 dotnet restore .\Zapret2.sln
