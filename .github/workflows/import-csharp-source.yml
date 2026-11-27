@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "Zapret2-CSharp-Portable-Source.zip"
+      - "Zapret2-CSharp-Portable-Source.tar.xz"
 
 permissions:
   contents: write
@@ -26,12 +26,12 @@ jobs:
       - name: Verify and extract C# source
         shell: pwsh
         run: |
-          $archive = Join-Path $PWD "Zapret2-CSharp-Portable-Source.zip"
+          $archive = Join-Path $PWD "Zapret2-CSharp-Portable-Source.tar.xz"
           if (!(Test-Path $archive)) { throw "C# source archive is missing." }
           $extract = Join-Path $env:RUNNER_TEMP "zapret2-csharp-import"
           if (Test-Path $extract) { Remove-Item $extract -Recurse -Force }
           New-Item -ItemType Directory -Path $extract -Force | Out-Null
-          Expand-Archive -LiteralPath $archive -DestinationPath $extract -Force
+          tar -xJf $archive -C $extract
 
           if (!(Test-Path (Join-Path $extract "Zapret2.sln"))) {
             throw "Zapret2.sln is missing from the archive root."
