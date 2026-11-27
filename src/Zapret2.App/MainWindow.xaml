@@ -109,14 +109,14 @@
                     </Border>
                     <Border Grid.Column="1" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="18" Margin="5,0">
                         <StackPanel>
-                            <TextBlock Text="LUA-БИБЛИОТЕКИ" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" CharacterSpacing="120"/>
+                            <TextBlock Text="LUA-БИБЛИОТЕКИ" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}"/>
                             <TextBlock x:Name="LuaStatusText" Text="Не найдены" FontSize="17" FontWeight="SemiBold" Margin="0,8,0,0"/>
                             <TextBlock Text="zapret-lib.lua и связанные файлы" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/>
                         </StackPanel>
                     </Border>
                     <Border Grid.Column="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="18" Margin="10,0,0,0">
                         <StackPanel>
-                            <TextBlock Text="BLOCKCHECK2" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" CharacterSpacing="120"/>
+                            <TextBlock Text="BLOCKCHECK2" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}"/>
                             <TextBlock x:Name="BlockcheckStatusText" Text="Не найден" FontSize="17" FontWeight="SemiBold" Margin="0,8,0,0"/>
                             <TextBlock Text="Инструмент диагностики" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/>
                         </StackPanel>
