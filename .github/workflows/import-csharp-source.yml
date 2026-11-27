@@ -1,60 +1,70 @@
-name: Import C# project structure
+name: One-time C# source migration
 
 on:
   push:
     branches: [main]
     paths:
-      - "Zapret2-CSharp-Portable-Source.tar.xz"
-  workflow_dispatch:
+      - "Zapret2-CSharp-Portable-Source.zip"
 
 permissions:
   contents: write
 
 concurrency:
-  group: import-csharp-source
+  group: zapret2-csharp-migration
   cancel-in-progress: false
 
 jobs:
   import-and-build:
-    if: ${{ hashFiles('Zapret2-CSharp-Portable-Source.tar.xz') != '' }}
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           persist-credentials: true
 
-      - name: Extract source into repository
+      - name: Verify and extract C# source
         shell: pwsh
         run: |
-          $archive = Join-Path $PWD "Zapret2-CSharp-Portable-Source.tar.xz"
+          $archive = Join-Path $PWD "Zapret2-CSharp-Portable-Source.zip"
           if (!(Test-Path $archive)) { throw "C# source archive is missing." }
           $extract = Join-Path $env:RUNNER_TEMP "zapret2-csharp-import"
           if (Test-Path $extract) { Remove-Item $extract -Recurse -Force }
           New-Item -ItemType Directory -Path $extract -Force | Out-Null
-          tar -xJf $archive -C $extract
+          Expand-Archive -LiteralPath $archive -DestinationPath $extract -Force
+
+          if (!(Test-Path (Join-Path $extract "Zapret2.sln"))) {
+            throw "Zapret2.sln is missing from the archive root."
+          }
+          if (!(Test-Path (Join-Path $extract "src/Zapret2.App/Zapret2.App.csproj"))) {
+            throw "WPF application project is missing from the archive."
+          }
+
           Get-ChildItem -LiteralPath $extract -Force | ForEach-Object {
             Copy-Item -LiteralPath $_.FullName -Destination $PWD -Recurse -Force
           }
-          Remove-Item $archive -Force
-          if (!(Test-Path "Zapret2.sln")) { throw "Zapret2.sln was not imported." }
-          if (!(Test-Path "src/Zapret2.App/Zapret2.App.csproj")) { throw "WPF app project was not imported." }
 
-      - name: Commit conventional source tree
+          Remove-Item $archive -Force
+          if (Test-Path "zapret2-rust-source.zip") {
+            New-Item -ItemType Directory -Path "legacy/rust" -Force | Out-Null
+            Move-Item "zapret2-rust-source.zip" "legacy/rust/zapret2-rust-source.zip" -Force
+          }
+          # This workflow is only needed for the one-time import.
+          Remove-Item ".github/workflows/import-csharp-source.yml" -Force
+
+      - name: Commit conventional C# source tree
         shell: pwsh
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           if (git diff --cached --quiet) {
-            Write-Host "No source changes to commit."
-          } else {
-            git commit -m "build: import conventional C# solution structure"
-            git push
+            throw "The migration produced no tracked changes."
           }
+          git commit -m "feat: migrate Zapret2 Control Center to C# WPF"
+          git push
 
-      - name: Install .NET 10
+      - name: Install .NET 10 SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
@@ -62,8 +72,8 @@ jobs:
       - name: Restore
         run: dotnet restore Zapret2.sln
 
-      - name: Test
-        run: dotnet test Zapret2.sln --configuration Release --no-restore
+      - name: Run tests
+        run: dotnet test Zapret2.sln --configuration Release --no-restore --logger "trx;LogFileName=zapret2-tests.trx"
 
       - name: Publish portable single-file EXE
         run: >-
@@ -78,20 +88,29 @@ jobs:
           -p:DebugSymbols=false
           --output publish/win-x64
 
-      - name: Verify and upload portable EXE
+      - name: Verify executable and prepare distribution files
         shell: pwsh
         run: |
           $exe = "publish/win-x64/Zapret2ControlCenter.exe"
           if (!(Test-Path $exe)) { throw "Portable executable was not produced: $exe" }
           $size = (Get-Item $exe).Length
           if ($size -lt 1MB) { throw "Executable is unexpectedly small ($size bytes)." }
-          "Portable EXE size: $size bytes" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  Zapret2ControlCenter.exe" | Set-Content "publish/win-x64/SHA256SUMS.txt" -Encoding ASCII
+          @'
+          Zapret2 Control Center — Windows x64 portable build
 
-      - uses: actions/upload-artifact@v4
+          Run Zapret2ControlCenter.exe. No separately installed .NET Runtime is required.
+          This is the GUI/controller only. It does not include winws2.exe, WinDivert,
+          drivers, or a zapret2 bundle. Select your separately installed bundle in Settings.
+          User configuration is stored in %APPDATA%\Zapret2GUI and is not inside this EXE.
+          '@ | Set-Content "publish/win-x64/README.txt" -Encoding UTF8
+          @("Portable EXE: $size bytes", "SHA-256: $hash") | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+
+      - name: Upload portable artifact
+        uses: actions/upload-artifact@v4
         with:
           name: Zapret2ControlCenter-Windows-x64
-          path: |
-            publish/win-x64/Zapret2ControlCenter.exe
-            publish/win-x64/README.txt
-          if-no-files-found: warn
+          path: publish/win-x64/*
+          if-no-files-found: error
           retention-days: 30
