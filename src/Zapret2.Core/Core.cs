@@ -453,16 +453,30 @@ public sealed class WinwsRunner : IDisposable
 
     public void Start(string exe, IReadOnlyList<string> args)
     {
-        if (IsRunning) throw new InvalidOperationException("winws2 уже запущен.");
         if (!File.Exists(exe)) throw new FileNotFoundException("Исполняемый файл winws2.exe не найден.", exe);
 
         lock (_sync)
         {
-            _pumpCts?.Cancel();
-            _pumpCts?.Dispose();
-            _process?.Dispose();
-            _pumpCts = null;
-            _pumpTask = null;
+            // Do not tear down a previous reader task: it may still be draining the
+            // process pipes and delivering the final diagnostics to the UI.
+            if (_process is not null)
+            {
+                bool previousExited;
+                try { previousExited = _process.HasExited; }
+                catch (InvalidOperationException) { previousExited = true; }
+
+                if (!previousExited)
+                    throw new InvalidOperationException("winws2 уже запущен.");
+
+                if (_pumpTask is { IsCompleted: false })
+                    throw new InvalidOperationException("Предыдущий процесс завершился, но журнал ещё обрабатывается. Повторите запуск через несколько секунд.");
+
+                _pumpCts?.Dispose();
+                _process.Dispose();
+                _pumpCts = null;
+                _process = null;
+                _pumpTask = null;
+            }
 
             var start = new ProcessStartInfo(exe)
             {
@@ -543,12 +557,17 @@ public sealed class WinwsRunner : IDisposable
         if (process is null) return;
         try
         {
-            if (process.HasExited) return;
-            _stopRequested = true;
-            process.Kill(entireProcessTree: true);
-            await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(8)).ConfigureAwait(false);
+            // A process can exit on its own between the UI status poll and this call.
+            // Still wait for the output pump so the final stdout/stderr lines are not lost.
+            if (!process.HasExited)
+            {
+                _stopRequested = true;
+                process.Kill(entireProcessTree: true);
+                await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(8)).ConfigureAwait(false);
+            }
+
             if (_pumpTask is not null)
-                await _pumpTask.WaitAsync(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+                await _pumpTask.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
         }
         catch (InvalidOperationException) { }
         catch (System.ComponentModel.Win32Exception ex)
@@ -564,7 +583,28 @@ public sealed class WinwsRunner : IDisposable
 
     public void Dispose()
     {
+        // Last-resort cleanup: closing the GUI must not leave an unmanaged winws2
+        // process behind if a caller forgot to invoke StopAsync first.
+        var process = _process;
+        if (process is not null)
+        {
+            try
+            {
+                if (!process.HasExited)
+                {
+                    _stopRequested = true;
+                    process.Kill(entireProcessTree: true);
+                    process.WaitForExit(5000);
+                }
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or System.NotSupportedException)
+            {
+                OutputReceived?.Invoke("[runner] Не удалось завершить процесс при закрытии: " + ex.Message);
+            }
+        }
+
         _pumpCts?.Cancel();
+        try { _pumpTask?.Wait(TimeSpan.FromSeconds(2)); } catch (AggregateException) { }
         _process?.Dispose();
         _pumpCts?.Dispose();
         _process = null;
