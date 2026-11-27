@@ -23,6 +23,64 @@ public sealed class Components
     public string? LuaDirectory { get; set; }
     public string? Blockcheck { get; set; }
     public string? BinaryDirectory => Winws2 is null ? null : Path.GetDirectoryName(Winws2);
+    public string? ListsDirectory => BinaryDirectory is null ? null : Path.GetFullPath(Path.Combine(BinaryDirectory, "..", "lists"));
+    public string GameFilterTCP => GameFilterSettings.Read(BinaryDirectory).Tcp;
+    public string GameFilterUDP => GameFilterSettings.Read(BinaryDirectory).Udp;
+}
+
+public sealed record GameFilterPorts(string Tcp, string Udp);
+
+public static class GameFilterSettings
+{
+    private static readonly Regex PortRangeList = new(@"^\d{1,5}(?:-\d{1,5})?(?:,\d{1,5}(?:-\d{1,5})?)*$", RegexOptions.Compiled);
+
+    public static GameFilterPorts Read(string? binaryDirectory)
+    {
+        const string disabled = "12";
+        if (string.IsNullOrWhiteSpace(binaryDirectory)) return new(disabled, disabled);
+        var root = Path.GetFullPath(Path.Combine(binaryDirectory, ".."));
+        var path = Path.Combine(root, "utils", "game_filter.enabled");
+        if (!File.Exists(path)) return new(disabled, disabled);
+
+        var mode = "disabled";
+        var tcp = "1024-65535";
+        var udp = "1024-65535";
+        try
+        {
+            foreach (var line in File.ReadLines(path))
+            {
+                var parts = line.Trim().Split('=', 2);
+                var key = parts[0].Trim();
+                var value = parts.Length == 2 ? parts[1].Trim() : "";
+                if (key.Equals("mode", StringComparison.OrdinalIgnoreCase)) mode = value;
+                else if (key.Equals("all", StringComparison.OrdinalIgnoreCase)) mode = "all";
+                else if (key.Equals("tcp", StringComparison.OrdinalIgnoreCase) && value.Length > 0 && Validate(value)) tcp = value;
+                else if (key.Equals("udp", StringComparison.OrdinalIgnoreCase) && value.Length > 0 && Validate(value)) udp = value;
+            }
+        }
+        catch (IOException) { return new(disabled, disabled); }
+        catch (UnauthorizedAccessException) { return new(disabled, disabled); }
+
+        return mode.ToLowerInvariant() switch
+        {
+            "all" => new(tcp, udp),
+            "tcp" => new(tcp, disabled),
+            "udp" => new(disabled, udp),
+            _ => new(disabled, disabled)
+        };
+    }
+
+    private static bool Validate(string value)
+    {
+        if (!PortRangeList.IsMatch(value)) return false;
+        foreach (var part in value.Split(','))
+        {
+            var bounds = part.Split('-', 2);
+            if (!int.TryParse(bounds[0], out var start) || start is < 1 or > 65535) return false;
+            if (bounds.Length == 2 && (!int.TryParse(bounds[1], out var end) || end is < 1 or > 65535 || end < start)) return false;
+        }
+        return true;
+    }
 }
 
 public sealed class AppConfig
@@ -364,6 +422,7 @@ public static class TrafficScopeAnalyzer
 public static class LaunchPreflight
 {
     private static readonly Regex LuaReference =
+    private static readonly Regex ListReference = new(@"\{LISTS\}[\\/]+([^\s""]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         new(@"\{LUA\}[\\/]+([^\s""]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public static IReadOnlyList<string> Validate(string profileTemplate, Components components)
@@ -395,13 +454,30 @@ public static class LaunchPreflight
             }
         }
 
+        var listMatches = ListReference.Matches(profileTemplate);
+        if (listMatches.Count > 0)
+        {
+            if (string.IsNullOrWhiteSpace(components.ListsDirectory) || !Directory.Exists(components.ListsDirectory))
+                errors.Add("Профиль Flowseal использует папку lists, но она не найдена рядом с bin.");
+            else
+            {
+                foreach (Match match in listMatches)
+                {
+                    var relativeName = match.Groups[1].Value.TrimEnd('\\', '/');
+                    if (relativeName.Length > 0 && !File.Exists(Path.Combine(components.ListsDirectory, relativeName)))
+                        errors.Add($"Не найден файл списка: {relativeName}. Откройте раздел «Списки» и обновите общие списки.");
+                }
+            }
+        }
+
         return errors;
     }
 }
 
 public static class ArgumentParser
 {
-    private static readonly Regex Variable = new(@"\{(BIN|LUA)\}([\\/]?)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex Variable = new(@"\{(BIN|LUA|LISTS)\}([\\/]?)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex ValueVariable = new(@"\{(GAMEFILTERTCP|GAMEFILTERUDP)\}", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex Leftover = new(@"\{[A-Za-z_]+\}", RegexOptions.Compiled);
 
     public static List<string> Tokenize(string text, bool keepQuotes = false)
@@ -440,13 +516,23 @@ public static class ArgumentParser
             var replaced = Variable.Replace(token, match =>
             {
                 var name = match.Groups[1].Value.ToUpperInvariant();
-                var path = name == "BIN" ? components.BinaryDirectory : components.LuaDirectory;
+                var path = name switch
+                {
+                    "BIN" => components.BinaryDirectory,
+                    "LUA" => components.LuaDirectory,
+                    "LISTS" => components.ListsDirectory,
+                    _ => null
+                };
                 if (path is null)
                     throw new InvalidOperationException($"Используется {{{name}}}, но компонент не найден в выбранной папке.");
                 return path.TrimEnd('\\', '/') + (match.Groups[2].Value.Length > 0 ? "\\" : "");
             });
+            replaced = ValueVariable.Replace(replaced, match =>
+                match.Groups[1].Value.Equals("GAMEFILTERTCP", StringComparison.OrdinalIgnoreCase)
+                    ? components.GameFilterTCP
+                    : components.GameFilterUDP);
             var leftover = Leftover.Match(replaced);
-            if (leftover.Success) throw new FormatException($"Неизвестная переменная {leftover.Value} (доступны {{BIN}} и {{LUA}}).");
+            if (leftover.Success) throw new FormatException($"Неизвестная переменная {leftover.Value} (доступны {{BIN}}, {{LUA}}, {{LISTS}}, {{GAMEFILTERTCP}}, {{GAMEFILTERUDP}}).");
             result.Add(replaced);
         }
         return result;
