@@ -418,4 +418,20 @@ public sealed class CoreTests
         finally { try { Directory.Delete(dir, true); } catch { } }
     }
 
+    [Fact]
+    public void TrafficScopeAnalyzerWarnsForGlobalPortFilters()
+    {
+        var warnings = TrafficScopeAnalyzer.GetWarnings(
+            "--wf-tcp-out=80,443 --wf-udp-out=443 --lua-init=@\"{LUA}\\zapret-lib.lua\"");
+
+        Assert.Equal(2, warnings.Count);
+        Assert.Contains(warnings, warning => warning.Contains("других программ", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void TrafficScopeAnalyzerDoesNotWarnForProfilesWithoutPortFilters()
+    {
+        Assert.Empty(TrafficScopeAnalyzer.GetWarnings("--debug"));
+    }
+
 }
