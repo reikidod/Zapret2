@@ -571,4 +571,103 @@ public sealed class CoreTests
         finally { try { Directory.Delete(directory, true); } catch { } }
     }
 
+    [Fact]
+    public void FlowsealImporterExtractsFullMultilineCommandWithoutExecutingBatch()
+    {
+        const string source = """
+@echo off
+cd /d "%~dp0"
+start "zapret" /min "%BIN%winws2.exe" --debug=0 --wf-tcp-out=80,443,%GameFilterTCP% ^
+--lua-init=@"%LUA%blobs.lua" ^
+--hostlist="%LISTS%list-general.txt" ^
+--new ^
+--filter-tcp=%GameFilterTCP%
+""";
+
+        var args = FlowsealClassicImporter.ExtractArguments(source, "test.bat");
+
+        Assert.Contains("--debug=0", args, StringComparison.Ordinal);
+        Assert.Contains("--lua-init=@{LUA}\\blobs.lua", args, StringComparison.Ordinal);
+        Assert.Contains("--hostlist={LISTS}\\list-general.txt", args, StringComparison.Ordinal);
+        Assert.Contains("--wf-tcp-out=80,443,{GAMEFILTERTCP}", args, StringComparison.Ordinal);
+        Assert.Contains("--filter-tcp={GAMEFILTERTCP}", args, StringComparison.Ordinal);
+        Assert.DoesNotContain("%", args, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void FlowsealImporterRejectsBatchWithoutWinwsCommand()
+    {
+        Assert.Throws<InvalidDataException>(() =>
+            FlowsealClassicImporter.ExtractArguments("echo nothing", "invalid.bat"));
+    }
+
+    [Fact]
+    public void GameFilterSettingsDefaultsToDisabledWhenSettingsFileIsMissing()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "Zapret2Tests", Guid.NewGuid().ToString("N"));
+        var bin = Path.Combine(root, "bin");
+        Directory.CreateDirectory(bin);
+        try
+        {
+            var ports = GameFilterSettings.Read(bin);
+            Assert.Equal("12", ports.Tcp);
+            Assert.Equal("12", ports.Udp);
+        }
+        finally { try { Directory.Delete(root, true); } catch { } }
+    }
+
+    [Fact]
+    public void GameFilterSettingsReadsEnabledTcpAndUdpRanges()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "Zapret2Tests", Guid.NewGuid().ToString("N"));
+        var bin = Path.Combine(root, "bin");
+        var utils = Path.Combine(root, "utils");
+        Directory.CreateDirectory(bin);
+        Directory.CreateDirectory(utils);
+        try
+        {
+            File.WriteAllText(Path.Combine(utils, "game_filter.enabled"),
+                "mode=all\ntcp=27000-27100,30000\nudp=27000-27100\n");
+
+            var ports = GameFilterSettings.Read(bin);
+
+            Assert.Equal("27000-27100,30000", ports.Tcp);
+            Assert.Equal("27000-27100", ports.Udp);
+        }
+        finally { try { Directory.Delete(root, true); } catch { } }
+    }
+
+    [Fact]
+    public void ArgumentParserResolvesListsAndGameFilterVariables()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "Zapret2Tests", Guid.NewGuid().ToString("N"));
+        var bin = Path.Combine(root, "bin");
+        var lua = Path.Combine(root, "lua");
+        var lists = Path.Combine(root, "lists");
+        var utils = Path.Combine(root, "utils");
+        Directory.CreateDirectory(bin);
+        Directory.CreateDirectory(lua);
+        Directory.CreateDirectory(lists);
+        Directory.CreateDirectory(utils);
+        try
+        {
+            File.WriteAllText(Path.Combine(bin, "winws2.exe"), "");
+            File.WriteAllText(Path.Combine(utils, "game_filter.enabled"), "mode=tcp\ntcp=3000-4000\n");
+
+            var components = new Components
+            {
+                Winws2 = Path.Combine(bin, "winws2.exe"),
+                LuaDirectory = lua
+            };
+            var args = ArgumentParser.Render(
+                "--hostlist={LISTS}\\list-general.txt --wf-tcp-out=80,{GAMEFILTERTCP} --wf-udp-out=443,{GAMEFILTERUDP}",
+                components);
+
+            Assert.Equal($"--hostlist={Path.Combine(lists, "list-general.txt")}", args[0]);
+            Assert.Equal("--wf-tcp-out=80,3000-4000", args[1]);
+            Assert.Equal("--wf-udp-out=443,12", args[2]);
+        }
+        finally { try { Directory.Delete(root, true); } catch { } }
+    }
+
 }
