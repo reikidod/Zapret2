@@ -58,8 +58,9 @@ jobs:
             New-Item -ItemType Directory -Path "legacy/rust" -Force | Out-Null
             Move-Item "zapret2-rust-source.zip" "legacy/rust/zapret2-rust-source.zip" -Force
           }
-          # This workflow is only needed for the one-time import.
-          Remove-Item ".github/workflows/import-csharp-source.yml" -Force
+          # Workflow files are restored before the commit: the default Actions token
+          # intentionally does not receive permission to modify .github/workflows.
+          git checkout -- .github/workflows/build-windows.yml .github/workflows/import-csharp-source.yml
 
       - name: Commit conventional C# source tree
         shell: pwsh
