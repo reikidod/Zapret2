@@ -6,7 +6,7 @@
         Foreground="{StaticResource TextBrush}" Closing="Window_Closing" UseLayoutRounding="True" SnapsToDevicePixels="True" TextOptions.TextFormattingMode="Display">
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="232"/>
+            <ColumnDefinition Width="248"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
@@ -63,7 +63,7 @@
                 </StackPanel>
                 <Border Grid.Column="1" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12,8" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal">
-                        <Ellipse Width="7" Height="7" Fill="{StaticResource SuccessBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <Ellipse x:Name="AdminStatusDot" Width="7" Height="7" Fill="{StaticResource WarningBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
                         <TextBlock x:Name="AdminStatus" Text="Проверка прав..." FontSize="12" Foreground="{StaticResource MutedBrush}"/>
                     </StackPanel>
                 </Border>
@@ -102,21 +102,21 @@
                     <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
                     <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="18" Margin="0,0,10,0">
                         <StackPanel>
-                            <TextBlock Text="WINWS2" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}"/>
+                            <TextBlock Text="WINWS2" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" CharacterSpacing="120"/>
                             <TextBlock x:Name="WinwsStatusText" Text="Не найден" FontSize="17" FontWeight="SemiBold" Margin="0,8,0,0"/>
                             <TextBlock Text="Исполняемый файл" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/>
                         </StackPanel>
                     </Border>
                     <Border Grid.Column="1" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="18" Margin="5,0">
                         <StackPanel>
-                            <TextBlock Text="LUA-БИБЛИОТЕКИ" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}"/>
+                            <TextBlock Text="LUA-БИБЛИОТЕКИ" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" CharacterSpacing="120"/>
                             <TextBlock x:Name="LuaStatusText" Text="Не найдены" FontSize="17" FontWeight="SemiBold" Margin="0,8,0,0"/>
                             <TextBlock Text="zapret-lib.lua и связанные файлы" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/>
                         </StackPanel>
                     </Border>
                     <Border Grid.Column="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="18" Margin="10,0,0,0">
                         <StackPanel>
-                            <TextBlock Text="BLOCKCHECK2" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}"/>
+                            <TextBlock Text="BLOCKCHECK2" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" CharacterSpacing="120"/>
                             <TextBlock x:Name="BlockcheckStatusText" Text="Не найден" FontSize="17" FontWeight="SemiBold" Margin="0,8,0,0"/>
                             <TextBlock Text="Инструмент диагностики" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/>
                         </StackPanel>
@@ -166,7 +166,7 @@
                                 <Button Content="Импорт JSON" Click="ImportProfiles_Click"/>
                                 <Button Content="Экспорт JSON" Click="ExportProfiles_Click"/>
                             </WrapPanel>
-                            <Button x:Name="ImportFlowsealButton" Content="Загрузить все классические стратегии Flowseal (22)" Click="ImportFlowseal_Click" Margin="0,7,0,0"/>
+                            <Button x:Name="ImportFlowsealButton" Content="Импортировать 22 стратегии Flowseal" ToolTip="Загрузить официальные BAT-профили Flowseal. BAT/CMD не запускаются." Click="ImportFlowseal_Click" Margin="0,7,0,0"/>
                         </StackPanel>
                     </DockPanel>
                 </Border>
