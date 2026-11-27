@@ -140,11 +140,18 @@ public partial class MainWindow : Window
     {
         _components = ComponentDiscovery.Find(BasePath.Text.Trim());
         static string Mark(string? path, string label) => path is null ? $"○ {label}: не найден" : $"● {label}: {path}";
+        var listStatus = !string.IsNullOrWhiteSpace(_components.ListsDirectory) && Directory.Exists(_components.ListsDirectory)
+            ? $"● Папка lists: {_components.ListsDirectory}"
+            : $"○ Папка lists: не найдена ({_components.ListsDirectory ?? "путь неизвестен"})";
+        var gameFilters = GameFilterSettings.Read(_components.BinaryDirectory);
+        static string FilterValue(string value) => value == "12" ? "12 (отключено)" : value;
         var lines = new[]
         {
             Mark(_components.Winws2, "winws2.exe"),
             Mark(_components.LuaDirectory, "Каталог Lua"),
-            Mark(_components.Blockcheck, "blockcheck2.cmd")
+            Mark(_components.Blockcheck, "blockcheck2.cmd"),
+            listStatus,
+            $"Игровые фильтры: TCP {FilterValue(gameFilters.Tcp)} · UDP {FilterValue(gameFilters.Udp)}"
         };
         ComponentsStatus.Text = string.Join(Environment.NewLine, lines);
         WinwsStatusText.Text = _components.Winws2 is null ? "Не найден" : "Найден";
