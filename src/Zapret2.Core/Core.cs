@@ -370,7 +370,7 @@ public static class LaunchPreflight
             {
                 foreach (Match match in LuaReference.Matches(profileTemplate))
                 {
-                    var relativeName = match.Groups[1].Value.TrimEnd('\\\\', '/');
+                    var relativeName = match.Groups[1].Value.TrimEnd('\\', '/');
                     if (relativeName.Length == 0) continue;
                     var path = Path.Combine(components.LuaDirectory, relativeName);
                     if (!File.Exists(path))
