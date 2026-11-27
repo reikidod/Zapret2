@@ -42,7 +42,20 @@ public partial class MainWindow : Window
         var hasCompleteExternalBundle = existingComponents.Winws is not null &&
             existingComponents.Winws2 is not null && existingComponents.Blockcheck is not null &&
             existingComponents.Blockcheck2 is not null && existingComponents.LuaDirectory is not null;
-        if (!hasCompleteExternalBundle && _embeddedBundleRoot is not null)
+        var isPreviouslyEmbeddedBundle = false;
+        if (!string.IsNullOrWhiteSpace(configuredBase))
+        {
+            try
+            {
+                var managedRoot = Path.GetFullPath(Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Zapret2GUI", "components")).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+                isPreviouslyEmbeddedBundle = Path.GetFullPath(configuredBase)
+                    .StartsWith(managedRoot, StringComparison.OrdinalIgnoreCase);
+            }
+            catch { }
+        }
+        if (_embeddedBundleRoot is not null && (isPreviouslyEmbeddedBundle || !hasCompleteExternalBundle))
             configuredBase = _embeddedBundleRoot;
         else if (string.IsNullOrWhiteSpace(configuredBase) || !Directory.Exists(configuredBase))
             configuredBase = _embeddedBundleRoot ?? configuredBase;
@@ -478,6 +491,7 @@ public partial class MainWindow : Window
             "Импорт классических профилей Flowseal", MessageBoxButton.YesNo, MessageBoxImage.Information) != MessageBoxResult.Yes)
             return;
 
+        RefreshComponents();
         CommitEditor();
         ImportFlowsealButton.IsEnabled = false;
         ImportFlowsealButton.Content = "Импорт стратегий Flowseal…";
