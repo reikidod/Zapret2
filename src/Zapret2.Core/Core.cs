@@ -54,8 +54,16 @@ public static class GameFilterSettings
                 var value = parts.Length == 2 ? parts[1].Trim() : "";
                 if (key.Equals("mode", StringComparison.OrdinalIgnoreCase)) mode = value;
                 else if (key.Equals("all", StringComparison.OrdinalIgnoreCase)) mode = "all";
-                else if (key.Equals("tcp", StringComparison.OrdinalIgnoreCase) && value.Length > 0 && Validate(value)) tcp = value;
-                else if (key.Equals("udp", StringComparison.OrdinalIgnoreCase) && value.Length > 0 && Validate(value)) udp = value;
+                else if (key.Equals("tcp", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (value.Length == 0) mode = "tcp";
+                    else if (Validate(value)) tcp = value;
+                }
+                else if (key.Equals("udp", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (value.Length == 0) mode = "udp";
+                    else if (Validate(value)) udp = value;
+                }
             }
         }
         catch (IOException) { return new(disabled, disabled); }
@@ -101,7 +109,7 @@ public sealed class ProfileStore
 {
     public const string TemplateArgs = """
 # Добавьте параметры из blockcheck2 или импортируйте готовый .cmd.
-# Переменные: {BIN} — папка winws2.exe, {LUA} — папка zapret-lib.lua.
+# Переменные: {BIN}, {LUA}, {LISTS}, {GAMEFILTERTCP}, {GAMEFILTERUDP}.
 --wf-tcp-out=80,443
 --lua-init=@"{LUA}\zapret-lib.lua"
 --lua-init=@"{LUA}\zapret-antidpi.lua"
@@ -422,8 +430,9 @@ public static class TrafficScopeAnalyzer
 public static class LaunchPreflight
 {
     private static readonly Regex LuaReference =
-    private static readonly Regex ListReference = new(@"\{LISTS\}[\\/]+([^\s""]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         new(@"\{LUA\}[\\/]+([^\s""]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex ListReference =
+        new(@"\{LISTS\}[\\/]+([^\s""]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public static IReadOnlyList<string> Validate(string profileTemplate, Components components)
     {
