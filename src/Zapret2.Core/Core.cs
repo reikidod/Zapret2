@@ -26,7 +26,7 @@ public sealed class Components
     public string? LuaDirectory { get; set; }
     public string? Blockcheck { get; set; }
     public string? Blockcheck2 { get; set; }
-    public string? BinaryDirectory => Path.GetDirectoryName(Winws2 ?? Winws ?? "");
+    public string? BinaryDirectory => (Winws2 ?? Winws) is { } executable ? Path.GetDirectoryName(executable) : null;
     public string? ListsDirectory => string.IsNullOrWhiteSpace(BinaryDirectory)
         ? null : Path.GetFullPath(Path.Combine(BinaryDirectory, "..", "lists"));
     public string GameFilterTCP => GameFilterSettings.Read(BinaryDirectory).Tcp;
@@ -173,7 +173,8 @@ public sealed class ProfileStore
             {
                 Name = string.IsNullOrWhiteSpace(p.Name) ? "Импортированный профиль" : p.Name.Trim(),
                 Args = p.Args ?? "",
-                Note = p.Note ?? ""
+                Note = p.Note ?? "",
+                Engine = string.Equals(p.Engine, "winws", StringComparison.OrdinalIgnoreCase) ? "winws" : "winws2"
             })
             .ToList();
 
@@ -284,8 +285,11 @@ public static class ComponentDiscovery
     {
         var result = new Components();
         if (string.IsNullOrWhiteSpace(baseDirectory) || !Directory.Exists(baseDirectory)) return result;
+        var root = new DirectoryInfo(baseDirectory);
+        if (root.Name.Equals("zapret-winws", StringComparison.OrdinalIgnoreCase) && root.Parent is not null)
+            root = root.Parent;
         var stack = new Stack<(DirectoryInfo Dir, int Depth)>();
-        stack.Push((new DirectoryInfo(baseDirectory), 0));
+        stack.Push((root, 0));
         while (stack.Count > 0)
         {
             var (dir, depth) = stack.Pop();
@@ -386,7 +390,7 @@ public static class WinwsFinder
             break;
         }
         var components = ComponentDiscovery.Find(bundleRoot?.FullName ?? folder.FullName);
-        return (components.LuaDirectory is not null ? 2 : 0) + (bundleRoot is not null && components.Blockcheck is not null ? 1 : 0);
+        return (components.LuaDirectory is not null ? 2 : 0) + (bundleRoot is not null && (components.Blockcheck is not null || components.Blockcheck2 is not null) ? 1 : 0);
     }
 
     private static void Scan(string root, int maxDepth, DateTime deadline, List<string> found)
