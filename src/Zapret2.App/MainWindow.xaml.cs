@@ -432,8 +432,12 @@ public partial class MainWindow : Window
             {
                 try
                 {
-                    var created = ListUpdateService.EnsureUserLists(BasePath.Text.Trim());
-                    foreach (var name in created) AppendLog("Создана зависимость профилей Flowseal: " + name);
+                    var bundleRoot = Directory.GetParent(_components.ListsDirectory)?.FullName;
+                    if (!string.IsNullOrWhiteSpace(bundleRoot))
+                    {
+                        var created = ListUpdateService.EnsureUserLists(bundleRoot);
+                        foreach (var name in created) AppendLog("Создана зависимость профилей Flowseal: " + name);
+                    }
                 }
                 catch (Exception listError)
                 {
