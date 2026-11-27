@@ -102,7 +102,7 @@
                     <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
                     <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="18" Margin="0,0,10,0">
                         <StackPanel>
-                            <TextBlock Text="WINWS2" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" CharacterSpacing="120"/>
+                            <TextBlock Text="WINWS2" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}"/>
                             <TextBlock x:Name="WinwsStatusText" Text="Не найден" FontSize="17" FontWeight="SemiBold" Margin="0,8,0,0"/>
                             <TextBlock Text="Исполняемый файл" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/>
                         </StackPanel>
