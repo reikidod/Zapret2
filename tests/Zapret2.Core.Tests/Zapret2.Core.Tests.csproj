@@ -6,6 +6,7 @@
     <IsTestProject>true</IsTestProject>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
@@ -16,4 +17,10 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup><ProjectReference Include="..\..\src\Zapret2.Core\Zapret2.Core.csproj" /></ItemGroup>
+  <ItemGroup>
+    <None Include="..\\..\\native\\target\\x86_64-pc-windows-msvc\\release\\zapret2_native.dll"
+          Link="zapret2_native.dll"
+          CopyToOutputDirectory="PreserveNewest"
+          Condition="Exists('..\\..\\native\\target\\x86_64-pc-windows-msvc\\release\\zapret2_native.dll')" />
+  </ItemGroup>
 </Project>
