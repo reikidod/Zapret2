@@ -3,15 +3,15 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-        <Color x:Key="AccentColor">#8AB4F8</Color>
-        <Color x:Key="AccentHoverColor">#A6C7FF</Color>
-        <Color x:Key="AppBackgroundColor">#0B0F14</Color>
-        <Color x:Key="SidebarColor">#10161E</Color>
-        <Color x:Key="PanelColor">#141C26</Color>
-        <Color x:Key="PanelRaisedColor">#1A2532</Color>
-        <Color x:Key="BorderColor">#273443</Color>
-        <Color x:Key="TextColor">#F4F7FB</Color>
-        <Color x:Key="MutedColor">#9AAABD</Color>
+        <Color x:Key="AccentColor">#38C9F5</Color>
+        <Color x:Key="AccentHoverColor">#72E1FF</Color>
+        <Color x:Key="AppBackgroundColor">#070B14</Color>
+        <Color x:Key="SidebarColor">#0B1422</Color>
+        <Color x:Key="PanelColor">#111D2D</Color>
+        <Color x:Key="PanelRaisedColor">#182A40</Color>
+        <Color x:Key="BorderColor">#29415C</Color>
+        <Color x:Key="TextColor">#F3F8FF</Color>
+        <Color x:Key="MutedColor">#9DB3CA</Color>
         <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
         <SolidColorBrush x:Key="AccentHoverBrush" Color="{StaticResource AccentHoverColor}"/>
         <SolidColorBrush x:Key="AppBackgroundBrush" Color="{StaticResource AppBackgroundColor}"/>
@@ -21,21 +21,21 @@
         <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}"/>
         <SolidColorBrush x:Key="TextBrush" Color="{StaticResource TextColor}"/>
         <SolidColorBrush x:Key="MutedBrush" Color="{StaticResource MutedColor}"/>
-        <SolidColorBrush x:Key="SuccessBrush" Color="#65D6A4"/>
-        <SolidColorBrush x:Key="WarningBrush" Color="#F2C477"/>
-        <SolidColorBrush x:Key="DangerBrush" Color="#F27E83"/>
-        <SolidColorBrush x:Key="FieldBrush" Color="#0F1721"/>
-        <SolidColorBrush x:Key="HoverBrush" Color="#202D3B"/>
-        <SolidColorBrush x:Key="SelectionBrush" Color="#243B57"/>
+        <SolidColorBrush x:Key="SuccessBrush" Color="#4ED9B0"/>
+        <SolidColorBrush x:Key="WarningBrush" Color="#FFC66D"/>
+        <SolidColorBrush x:Key="DangerBrush" Color="#FF7F91"/>
+        <SolidColorBrush x:Key="FieldBrush" Color="#0D1726"/>
+        <SolidColorBrush x:Key="HoverBrush" Color="#1A3048"/>
+        <SolidColorBrush x:Key="SelectionBrush" Color="#183B59"/>
 
         <Style TargetType="{x:Type Button}">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
             <Setter Property="Background" Value="#202C3A"/>
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="14,9"/>
+            <Setter Property="Padding" Value="15,10"/>
             <Setter Property="Margin" Value="4"/>
-            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontSize" Value="13.5"/>
             <Setter Property="FontWeight" Value="Medium"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
@@ -44,7 +44,7 @@
                     <ControlTemplate TargetType="{x:Type Button}">
                         <Border x:Name="Surface" Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                CornerRadius="11" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                                               RecognizesAccessKey="True"/>
@@ -67,11 +67,13 @@
         </Style>
 
         <Style x:Key="AccentButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
-            <Setter Property="Foreground" Value="#101923"/>
+            <Setter Property="Background" Value="{StaticResource AccentGradientBrush}"/>
+            <Setter Property="BorderBrush" Value="#55D9FF"/>
+            <Setter Property="Foreground" Value="#061522"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
+        <LinearGradientBrush x:Key="HeroBrush" StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#122E4B" Offset="0"/><GradientStop Color="#10243B" Offset="0.58"/><GradientStop Color="#17253A" Offset="1"/></LinearGradientBrush>
+        <LinearGradientBrush x:Key="AccentGradientBrush" StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#65E0FF" Offset="0"/><GradientStop Color="#28B8F2" Offset="1"/></LinearGradientBrush>
         <Style x:Key="NavButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
             <Setter Property="Background" Value="Transparent"/>

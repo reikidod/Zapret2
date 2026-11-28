@@ -8,6 +8,7 @@
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>Zapret2ControlCenter</AssemblyName>
+    <ApplicationIcon>Assets\Zapret2.ico</ApplicationIcon>
     <RootNamespace>Zapret2.App</RootNamespace>
     <Version>0.1.0</Version>
     <AssemblyVersion>0.1.0.0</AssemblyVersion>
@@ -18,6 +19,7 @@
     <ProjectReference Include="..\Zapret2.Core\Zapret2.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Resource Include="Assets\Zapret2.ico" />
     <EmbeddedResource Include="Resources\zapret-runtime.zip" LogicalName="Zapret2.App.Resources.zapret-runtime.zip" Condition="Exists('Resources\zapret-runtime.zip')" />
     <EmbeddedResource Include="..\..\native\target\x86_64-pc-windows-msvc\release\zapret2_native.dll"
                       LogicalName="Zapret2.App.Resources.zapret2_native.dll"
