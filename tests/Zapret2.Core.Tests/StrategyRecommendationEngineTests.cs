@@ -9,9 +9,9 @@ public sealed class StrategyRecommendationEngineTests
     public void RanksStrategiesByDistinctConfirmedTargetsForWinws2()
     {
         const string output = """
-            !!!!! curl_test_https_tls12: working strategy found for ipv4 one.example : winws2 --dpi-desync=fake !!!!!!
-            !!!!! curl_test_https_tls12: working strategy found for ipv6 one.example : winws2 --dpi-desync=fake !!!!!!
-            !!!!! curl_test_https_tls12: working strategy found for ipv4 two.example : winws2 --dpi-desync=fake !!!!!!
+            !!!!! curl_test_https_tls12: working strategy found for ipv4 one.example : winws2 --dpi-desync=fake !!!!!
+            !!!!! curl_test_https_tls12: working strategy found for ipv6 one.example : winws2 --dpi-desync=fake !!!!!
+            !!!!! curl_test_https_tls12: working strategy found for ipv4 two.example : winws2 --dpi-desync=fake !!!!!
             !!!!! curl_test_https_tls12: working strategy found for ipv4 three.example : winws2 --dpi-desync=split !!!!!
             !!!!! curl_test_https_tls12: working strategy found for ipv4 four.example : winws --dpi-desync=multisplit !!!!!
             """;
