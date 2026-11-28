@@ -8,8 +8,3 @@ publish = false
 name = "zapret2_native"
 crate-type = ["cdylib", "rlib"]
 
-[profile.release]
-panic = "abort"
-lto = true
-codegen-units = 1
-strip = true
