@@ -1,0 +1,3 @@
+[workspace]
+members = ["zapret2-native"]
+resolver = "2"
