@@ -23,7 +23,7 @@ public sealed class DiagnosticSessionAnalyzerTests
             var result = DiagnosticSessionAnalyzer.Analyze(path);
 
             Assert.Equal("Discord compatibility check", result.SessionTitle);
-            Assert.Equal(4, result.TotalLines);
+            Assert.Equal(7, result.TotalLines);
             Assert.Equal(1, result.PotentialErrorLines);
             Assert.Equal(1, result.PotentialWarningLines);
             Assert.Equal(TimeSpan.FromSeconds(10), result.Duration);
