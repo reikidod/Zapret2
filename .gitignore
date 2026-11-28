@@ -10,3 +10,6 @@ artifacts/
 
 # Generated during portable build; the runtime archive is embedded in the EXE.
 src/Zapret2.App/Resources/zapret-runtime.zip
+
+# Rust build output
+native/target/
