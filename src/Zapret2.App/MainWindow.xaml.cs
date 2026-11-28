@@ -745,6 +745,65 @@ public partial class MainWindow : Window
         catch (Exception ex) { MessageBox.Show(ex.Message, "Ошибка запуска " + scriptName, MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 
+    private void RecommendStrategy_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Выберите сохранённый отчёт blockcheck2",
+            Filter = "Отчёты blockcheck (*.txt;*.log)|*.txt;*.log|Все файлы (*.*)|*.*",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (dialog.ShowDialog() != true) return;
+
+        try
+        {
+            var output = File.ReadAllText(dialog.FileName);
+            var report = BlockcheckOutputParser.Parse(output);
+            var recommendations = StrategyRecommendationEngine.Recommend(report, "winws2", 5);
+            if (recommendations.Count == 0)
+            {
+                MessageBox.Show(
+                    "В отчёте не найдены подтверждённые рабочие стратегии winws2.\n\n" +
+                    "Убедитесь, что это полный текстовый отчёт blockcheck2, а не скриншот или обычный журнал.",
+                    "Подбор стратегии", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var lines = recommendations.Select((item, index) =>
+                $"{index + 1}. {item.Strategy}\n   Целей с подтверждённым результатом: {item.SuccessfulTargets} · Уверенность: {item.Confidence}");
+            var best = recommendations[0];
+            var summary = "Результаты подбора по отчёту blockcheck2:\n\n" +
+                string.Join("\n", lines) +
+                (report.HasDnsHijackWarning ? "\n\nВнимание: отчёт содержит предупреждение о возможной подмене DNS." : "") +
+                "\n\nСоздать профиль из первого результата? Он будет добавлен, но не запущен автоматически.";
+
+            if (MessageBox.Show(summary, "Подбор лучшей стратегии", MessageBoxButton.YesNo, MessageBoxImage.Information) != MessageBoxResult.Yes)
+                return;
+
+            var profile = new Profile
+            {
+                Name = _store.UniqueName("Автоподбор · " + DateTime.Now.ToString("yyyy-MM-dd HH-mm")),
+                Args = best.Strategy,
+                Note = $"Подобрано по отчёту {Path.GetFileName(dialog.FileName)}. Подтверждённых целей: {best.SuccessfulTargets}. Уверенность: {best.Confidence}. Результат зависит от сети и проверенных целей.",
+                Engine = "winws2"
+            };
+            _profiles.Add(profile);
+            _store.Config.Profiles = _profiles.ToList();
+            _store.Config.ActiveProfile = profile.Name;
+            _store.Save();
+            ProfilesList.SelectedItem = profile;
+            AppendLog($"Создан профиль «{profile.Name}» по результатам blockcheck2. Автоматический запуск не выполнялся.");
+            MessageBox.Show($"Профиль «{profile.Name}» добавлен. Проверьте его перед запуском.", "Профиль создан",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            AppendLog("Ошибка подбора стратегии: " + ex.Message);
+            MessageBox.Show(ex.Message, "Не удалось подобрать стратегию", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void Admin_Click(object sender, RoutedEventArgs e)
     {
         if (_runner.IsRunning) { MessageBox.Show("Сначала остановите DPI-движок."); return; }
