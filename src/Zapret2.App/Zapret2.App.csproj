@@ -19,5 +19,8 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resources\zapret-runtime.zip" LogicalName="Zapret2.App.Resources.zapret-runtime.zip" Condition="Exists('Resources\zapret-runtime.zip')" />
-  </ItemGroup>
+      <EmbeddedResource Include="..\..\native\target\x86_64-pc-windows-msvc\release\zapret2_native.dll"
+                      LogicalName="Zapret2.App.Resources.zapret2_native.dll"
+                      Condition="Exists('..\..\native\target\x86_64-pc-windows-msvc\release\zapret2_native.dll')" />
+</ItemGroup>
 </Project>
