@@ -91,6 +91,22 @@ public partial class MainWindow : Window
 
         UpdateAdminStatus();
         RefreshComponents();
+        try
+        {
+            var nativeDirectory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Zapret2GUI", "native");
+            var nativeLibrary = NativeRuntimeBridge.ExtractEmbeddedLibrary(
+                typeof(MainWindow).Assembly, nativeDirectory);
+            var nativeProbe = NativeRuntimeBridge.Probe(_components, nativeLibrary);
+            AppendLog(nativeProbe.NativeAvailable
+                ? $"Rust native ABI {nativeProbe.AbiVersion}: runtime-компоненты {nativeProbe.PresentCount}/7 проверены; результат совпал с C#."
+                : $"Rust native недоступен — используется C# fallback ({nativeProbe.PresentCount}/7 компонентов): {nativeProbe.FallbackReason}");
+        }
+        catch (Exception ex)
+        {
+            AppendLog("Rust native bridge: включён C# fallback. " + ex.Message);
+        }
         SelectActiveProfile();
         SetPage("overview");
         UpdateRuntimeState();
