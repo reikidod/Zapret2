@@ -43,7 +43,7 @@ public sealed class BlockcheckOutputParserTests
     public void ParsesClassicWinwsAndDiagnosticWarnings()
     {
         const string output = """
-            !!!!! curl_test_https_tls13: working strategy found for ipv6 example.net : winws --dpi-desync=split !!!!!!
+            !!!!! curl_test_https_tls13: working strategy found for ipv6 example.net : winws --dpi-desync=split !!!!!
             * checking DNS
             POSSIBLE DNS HIJACK DETECTED. ZAPRET WILL NOT HELP YOU IN CASE DNS IS SPOOFED !!!
             - IP block tests (requires manual interpretation)
