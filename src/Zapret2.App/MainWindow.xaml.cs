@@ -952,7 +952,7 @@ public partial class MainWindow : Window
                 $"{summary.SessionTitle}\n" +
                 $"Изменён: {selected[0].LastWriteTimeUtc.ToLocalTime():g}\n" +
                 $"Строк: {summary.TotalLines} · Возможные ошибки: {summary.PotentialErrorLines} · Предупреждения: {summary.PotentialWarningLines}\n" +
-                $"Длительность по временным меткам: {summary.Duration?.ToString(@"hh\\:mm\\:ss") ?? "н/д"}\n" +
+                $"Длительность по временным меткам: {summary.Duration?.ToString(@"hh\:mm\:ss") ?? "н/д"}\n" +
                 $"SHA-256: {summary.Sha256[..16]}…";
         }
         catch (Exception ex)
@@ -977,7 +977,7 @@ public partial class MainWindow : Window
             SessionSummaryText.Text =
                 $"Сравнение: {comparison.First.SessionTitle} → {comparison.Second.SessionTitle}\n" +
                 $"Строки: {comparison.LineDelta:+#;-#;0} · Возможные ошибки: {comparison.PotentialErrorDelta:+#;-#;0} · Предупреждения: {comparison.PotentialWarningDelta:+#;-#;0}\n" +
-                $"Изменение длительности: {comparison.DurationDelta?.ToString(@"hh\\:mm\\:ss") ?? "н/д"}\n" +
+                $"Изменение длительности: {comparison.DurationDelta?.ToString(@"hh\:mm\:ss") ?? "н/д"}\n" +
                 $"Содержимое {(comparison.ContentChanged ? "изменилось" : "не изменилось")} (SHA-256).\n" +
                 "Счётчики ошибок/предупреждений — поиск слов-маркеров, не диагноз сетевой совместимости.";
         }
