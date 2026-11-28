@@ -64,7 +64,7 @@ public static class DiagnosticSessionAnalyzer
                 startedAt = parsedStart;
 
             if (TryReadEventTimestamp(line, out var eventTime))
-                lastEventAt = lastEventAt is null || eventTime > lastEventAt ? eventTime : lastEventAt;
+                lastEventAt = lastEventAt is null || eventTime > lastEventAt.Value ? eventTime : lastEventAt;
 
             if (ContainsAny(line, ErrorMarkers)) errors++;
             else if (ContainsAny(line, WarningMarkers)) warnings++;
@@ -73,7 +73,7 @@ public static class DiagnosticSessionAnalyzer
         TimeSpan? duration = startedAt is not null && lastEventAt is not null
             ? lastEventAt.Value - startedAt.Value
             : null;
-        if (duration < TimeSpan.Zero) duration = null;
+        if (duration is not null && duration.Value < TimeSpan.Zero) duration = null;
 
         return new DiagnosticSessionSummary(
             fullPath, title, startedAt, lastEventAt, duration, totalLines,
