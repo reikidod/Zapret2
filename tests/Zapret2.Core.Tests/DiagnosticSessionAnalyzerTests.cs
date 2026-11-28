@@ -1,5 +1,6 @@
 using System.Text;
 using Zapret2.Core;
+using Xunit;
 
 namespace Zapret2.Core.Tests;
 
