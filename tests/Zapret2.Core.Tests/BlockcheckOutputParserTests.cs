@@ -9,7 +9,7 @@ public sealed class BlockcheckOutputParserTests
     public void ParsesPinnedZapret2WorkingAndNotFoundMarkers()
     {
         const string output = """
-            curl_test_https_tls12: working strategy found for ipv4 example.com : winws2 --dpi-desync=fake --dpi-desync-ttl=5 !!!!!
+            !!!!! curl_test_https_tls12: working strategy found for ipv4 example.com : winws2 --dpi-desync=fake --dpi-desync-ttl=5 !!!!!
             curl_test_http: winws2 strategy for ipv6 example.org not found
             * SUMMARY
             curl_test_https_tls12 ipv4 example.com : winws2 --dpi-desync=fake
