@@ -100,12 +100,12 @@ mod tests {
     }
 
     #[test]
-    fn probe_ignores_empty_lines_and_stops_after_seven_paths() {
+    fn probe_preserves_component_slots_when_paths_are_empty() {
         let root = temp_dir();
         let file = root.join("component.bin");
         fs::write(&file, b"test").expect("write component");
         let input = format!("\n{}\n{}\n", file.display(), file.display());
-        assert_eq!(probe_text(&input).expect("probe"), 0b000_0010);
+        assert_eq!(probe_text(&input).expect("probe"), 0b000_0110);
         fs::remove_dir_all(root).expect("cleanup");
     }
 
