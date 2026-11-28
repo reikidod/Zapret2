@@ -21,6 +21,8 @@
 - [x] Запуск/остановка `winws2` с выводом stdout/stderr.
 - [x] Диагностика других процессов `winws` / `winws2` с PID.
 - [x] Подтверждённая self-contained single-file публикация Windows x64 в CI.
+- [x] Гибридный C# / Rust runtime probe с проверкой ABI, сравнением результатов и автоматическим C# fallback.
+- [x] Встроенная Rust DLL в portable EXE; Windows CI подтверждает сборку и публикацию.
 - [x] Успешная Windows CI-сборка C#-версии и проверка тестов (42/42).
 - [ ] Smoke-тест на Windows 10/11 с реальным совместимым bundle.
 
@@ -30,9 +32,10 @@
 - [x] Создан Rust workspace и версионированный C ABI v1 для проверки наличия семи runtime-компонентов.
 - [x] Добавлены unit-тесты Rust для ABI и маски обнаружения файлов.
 - [x] Добавлены Rust test/build шаги в Windows CI.
-- [ ] Подключить Rust DLL к C# через безопасный interop-слой с проверкой ABI и managed fallback.
-- [ ] Встроить Rust DLL в portable single-file EXE и проверить запуск на чистой Windows x64.
-- [ ] Добавить интеграционные тесты согласованности результатов C# и Rust.
+- [x] Подключить Rust DLL к C# через безопасный interop-слой с проверкой ABI и managed fallback.
+- [x] Встроить Rust DLL в portable single-file EXE; проверено сборкой и публикацией в Windows CI.
+- [x] Добавить интеграционные тесты согласованности результатов C# и Rust (C# suite: 56/56; Rust: 3/3).
+- [ ] Выполнить smoke-запуск portable EXE на чистой Windows 10/11 с реальным совместимым bundle.
 
 **Критерий готовности:** C# и Rust работают как единое приложение; отсутствие или несовместимость native DLL не ломает запуск и базовые функции.
 
