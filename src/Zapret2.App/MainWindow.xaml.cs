@@ -18,6 +18,7 @@ public partial class MainWindow : Window
     private readonly ListUpdateService _listUpdater = new();
     private readonly DiagnosticLogStore _logStore = new();
     private readonly ObservableCollection<Profile> _profiles = [];
+    private readonly ObservableCollection<DiagnosticLogInfo> _sessions = [];
     private readonly DispatcherTimer _statusTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private Components _components = new();
     private Profile? _current;
@@ -37,6 +38,7 @@ public partial class MainWindow : Window
         _store.Load();
         foreach (var profile in _store.Config.Profiles) _profiles.Add(profile);
         ProfilesList.ItemsSource = _profiles;
+        SessionList.ItemsSource = _sessions;
         var configuredBase = _store.Config.BaseDirectory;
         var existingComponents = ComponentDiscovery.Find(configuredBase);
         var hasCompleteExternalBundle = existingComponents.Winws is not null &&
@@ -144,7 +146,7 @@ public partial class MainWindow : Window
             button.BorderBrush = selected ? activeBorder : Brushes.Transparent;
         }
 
-        if (page == "diagnostics") RefreshDiagnostics();
+        if (page == "diagnostics") { RefreshDiagnostics(); RefreshSessions(); }
         if (page == "lists") RefreshListStatus();
     }
 
@@ -908,6 +910,96 @@ public partial class MainWindow : Window
             Process.Start(new ProcessStartInfo("explorer.exe", $"\"{_store.DirectoryPath}\"") { UseShellExecute = true });
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, "Папка настроек", MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
+    private void RefreshSessions_Click(object sender, RoutedEventArgs e) => RefreshSessions();
+
+    private void RefreshSessions()
+    {
+        try
+        {
+            _sessions.Clear();
+            foreach (var session in _logStore.GetSessions())
+                _sessions.Add(session);
+            SessionSummaryText.Text = $"Найдено журналов: {_sessions.Count}. Выберите одну сессию для сводки или две для сравнения.";
+        }
+        catch (Exception ex)
+        {
+            SessionSummaryText.Text = "Не удалось прочитать историю сессий: " + ex.Message;
+        }
+    }
+
+    private void SessionList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        var selected = SessionList.SelectedItems.Cast<DiagnosticLogInfo>().ToList();
+        if (selected.Count == 0)
+        {
+            SessionSummaryText.Text = "Выберите одну сессию для просмотра сводки или две для сравнения.";
+            return;
+        }
+        if (selected.Count > 1)
+        {
+            SessionSummaryText.Text = selected.Count == 2
+                ? "Выбраны две сессии. Нажмите «Сравнить две»."
+                : "Для сравнения выберите ровно две сессии.";
+            return;
+        }
+
+        try
+        {
+            var summary = DiagnosticSessionAnalyzer.Analyze(selected[0].Path);
+            SessionSummaryText.Text =
+                $"{summary.SessionTitle}\n" +
+                $"Изменён: {selected[0].LastWriteTimeUtc.ToLocalTime():g}\n" +
+                $"Строк: {summary.TotalLines} · Возможные ошибки: {summary.PotentialErrorLines} · Предупреждения: {summary.PotentialWarningLines}\n" +
+                $"Длительность по временным меткам: {summary.Duration?.ToString(@"hh\\:mm\\:ss") ?? "н/д"}\n" +
+                $"SHA-256: {summary.Sha256[..16]}…";
+        }
+        catch (Exception ex)
+        {
+            SessionSummaryText.Text = "Не удалось разобрать журнал: " + ex.Message;
+        }
+    }
+
+    private void CompareSessions_Click(object sender, RoutedEventArgs e)
+    {
+        var selected = SessionList.SelectedItems.Cast<DiagnosticLogInfo>().ToList();
+        if (selected.Count != 2)
+        {
+            MessageBox.Show("Для сравнения выберите ровно две сессии (Ctrl/Shift + щелчок).",
+                "Сравнение журналов", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        try
+        {
+            var comparison = DiagnosticSessionAnalyzer.Compare(selected[0].Path, selected[1].Path);
+            SessionSummaryText.Text =
+                $"Сравнение: {comparison.First.SessionTitle} → {comparison.Second.SessionTitle}\n" +
+                $"Строки: {comparison.LineDelta:+#;-#;0} · Возможные ошибки: {comparison.PotentialErrorDelta:+#;-#;0} · Предупреждения: {comparison.PotentialWarningDelta:+#;-#;0}\n" +
+                $"Изменение длительности: {comparison.DurationDelta?.ToString(@"hh\\:mm\\:ss") ?? "н/д"}\n" +
+                $"Содержимое {(comparison.ContentChanged ? "изменилось" : "не изменилось")} (SHA-256).\n" +
+                "Счётчики ошибок/предупреждений — поиск слов-маркеров, не диагноз сетевой совместимости.";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Сравнение журналов", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void OpenSelectedSession_Click(object sender, RoutedEventArgs e)
+    {
+        if (SessionList.SelectedItem is not DiagnosticLogInfo session) return;
+        try
+        {
+            var startInfo = new ProcessStartInfo("notepad.exe") { UseShellExecute = false };
+            startInfo.ArgumentList.Add(session.Path);
+            Process.Start(startInfo);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Открытие журнала", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void OpenLogsFolder_Click(object sender, RoutedEventArgs e)
