@@ -34,5 +34,8 @@ cargo test --manifest-path native/Cargo.toml
 cargo build --manifest-path native/Cargo.toml --release --target x86_64-pc-windows-msvc
 ```
 
-The native DLL is not yet a required runtime dependency; integration and
-single-file embedding are handled by the managed application build.
+The C# application embeds this DLL in the portable EXE when the Windows CI
+build produces it. At startup, C# extracts it to the per-user application data
+folder, validates the ABI, and compares native results with its own managed
+probe. If extraction, loading, ABI validation, or result comparison fails, the
+application continues with the managed C# result.
